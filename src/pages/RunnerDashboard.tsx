@@ -25,7 +25,7 @@ import {
 import { Workout, Consultation, Registration, Race } from '../types';
 import { cn, formatDate, formatCurrency, handleFirestoreError, OperationType, formatGoal } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useLocation } from 'react-router-dom';
 import { addDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { auth } from '../lib/firebase';
 import { WorkoutGraph, TrainingPlayer } from '../components/WorkoutVisuals';
@@ -44,15 +44,24 @@ import {
 const RunnerDashboard = () => {
   const { user, profile } = useAuth();
   const [searchParams] = useSearchParams();
-  const initialTab = searchParams.get('tab') as 'treinos' | 'consultorias' | 'corridas';
-  const [activeTab, setActiveTab] = useState<'treinos' | 'consultorias' | 'corridas'>(initialTab || 'treinos');
+  const location = useLocation();
+
+  const tabFromPath = location.pathname.endsWith('/races')
+    ? 'corridas'
+    : location.pathname.endsWith('/trainings')
+    ? 'treinos'
+    : location.pathname.endsWith('/consulting')
+    ? 'consultorias'
+    : null;
+
+  const initialTab = (tabFromPath || searchParams.get('tab') || 'treinos') as 'treinos' | 'consultorias' | 'corridas';
+  const [activeTab, setActiveTab] = useState<'treinos' | 'consultorias' | 'corridas'>(initialTab);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    if (initialTab && ['treinos', 'consultorias', 'corridas'].includes(initialTab)) {
-      setActiveTab(initialTab);
-    }
-  }, [initialTab]);
+    console.log('[RunnerDashboard] route changed →', location.pathname, '| tab:', initialTab);
+    setActiveTab(initialTab);
+  }, [location.pathname, searchParams.toString()]);
 
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [consultations, setConsultations] = useState<Consultation[]>([]);

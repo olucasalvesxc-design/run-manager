@@ -129,7 +129,7 @@ const DashboardOverview = () => {
           <p className="text-slate-500 font-medium">Você tem {races.length} corridas sob sua gestão profissional.</p>
         </div>
         <Link 
-          to="/dashboard/race/new" 
+          to="/organizer/races/create"
           className="relative z-10 bg-white text-black px-10 py-4 rounded-2xl font-black flex items-center justify-center gap-3 hover:bg-yellow-400 transition-all shadow-xl group uppercase italic text-sm"
         >
           <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform" />
@@ -189,7 +189,7 @@ const DashboardOverview = () => {
                     Crie treinos para seus atletas, gerencie mensalidades e integre tudo com suas corridas em um único lugar.
                   </p>
                   <Link 
-                    to="/dashboard/trainer/plans" 
+                    to="/organizer/trainer/plans"
                     className="inline-flex bg-indigo-500 text-white px-8 py-3.5 rounded-2xl font-black text-sm hover:bg-indigo-400 transition-all uppercase italic tracking-widest"
                   >
                     Ativar Consultoria Grátis
@@ -254,14 +254,14 @@ const DashboardOverview = () => {
              </div>
              <div className="flex flex-col sm:flex-row gap-4 w-full relative z-10">
                <Link 
-                to="/dashboard/trainer" 
+                to="/organizer/training-consulting"
                 className="flex-1 bg-white text-black px-8 py-3.5 rounded-2xl font-black text-[10px] hover:bg-yellow-400 transition-all uppercase italic tracking-widest flex items-center justify-center gap-3 shadow-lg"
               >
                 Gerenciar Alunos
                 <ChevronRight className="w-4 h-4" />
               </Link>
               <Link 
-                to="/dashboard/trainer/workout/new" 
+                to="/organizer/trainer/workout/new"
                 className="flex-1 bg-slate-800 text-white px-8 py-3.5 rounded-2xl font-black text-[10px] border border-white/10 hover:bg-slate-700 transition-all uppercase italic tracking-widest flex items-center justify-center gap-3"
               >
                 <Plus className="w-4 h-4" />
@@ -336,7 +336,7 @@ const DashboardOverview = () => {
              <div className="h-px flex-1 bg-slate-900 mx-8"></div>
           )}
           {races.length > 5 && (
-            <Link to="/dashboard/races" className="text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-yellow-400 transition-colors">Ver catálogo</Link>
+            <Link to="/organizer/races" className="text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-yellow-400 transition-colors">Ver catálogo</Link>
           )}
         </div>
 
@@ -346,7 +346,7 @@ const DashboardOverview = () => {
             <Calendar className="w-20 h-20 text-slate-800 mx-auto mb-8 animate-pulse" />
             <h3 className="text-3xl font-display font-black text-white italic uppercase tracking-tight mb-4">Solo sagrado aguarda</h3>
             <p className="text-slate-500 mb-10 max-w-sm mx-auto font-medium">Sua jornada como organizador profissional começa com a criação do seu primeiro evento épico.</p>
-            <Link to="/dashboard/race/new" className="inline-flex bg-yellow-400 text-black px-12 py-4 rounded-2xl font-black text-lg hover:scale-105 transition-all shadow-xl italic uppercase">
+            <Link to="/organizer/races/create" className="inline-flex bg-yellow-400 text-black px-12 py-4 rounded-2xl font-black text-lg hover:scale-105 transition-all shadow-xl italic uppercase">
               Criar Agora
             </Link>
           </div>
@@ -634,7 +634,7 @@ const RaceCard = memo(({ race, registrationsCount, onDelete }: { race: Race; reg
           <div className="font-display font-black text-2xl text-white italic group-hover:text-yellow-400 transition-colors">
             {race.participationType === 'beneficent' ? 'DOAÇÃO' : race.participationType === 'free' ? 'GRÁTIS' : formatCurrency(race.price)}
           </div>
-          <Link to={`/dashboard/race/${race.id}`} className="inline-flex items-center gap-2 bg-slate-900 text-yellow-400 px-5 py-2 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-yellow-400 hover:text-slate-950 transition-all">
+          <Link to={`/organizer/race/${race.id}`} className="inline-flex items-center gap-2 bg-slate-900 text-yellow-400 px-5 py-2 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-yellow-400 hover:text-slate-950 transition-all">
             GESTÃO
             <ChevronRight className="w-4 h-4" />
           </Link>

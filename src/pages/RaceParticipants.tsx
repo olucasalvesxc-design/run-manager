@@ -83,7 +83,7 @@ const RaceParticipants = () => {
   return (
     <div className="space-y-10 animate-in fade-in duration-500 pb-20">
       <div className="flex flex-col gap-6">
-        <Link to={`/dashboard/race/${id}`} className="flex items-center gap-2 text-slate-500 hover:text-white transition-colors group w-fit">
+        <Link to={`/organizer/race/${id}`} className="flex items-center gap-2 text-slate-500 hover:text-white transition-colors group w-fit">
            <ChevronLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
            <span className="text-[10px] font-black uppercase tracking-widest">Voltar para Prova</span>
         </Link>

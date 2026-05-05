@@ -138,7 +138,7 @@ const CreateRace = () => {
       });
 
       console.log("Corrida criada com sucesso:", docRef.id);
-      navigate(`/dashboard/race/${docRef.id}`);
+      navigate(`/organizer/race/${docRef.id}`);
     } catch (err: any) {
       console.error("Erro detalhado ao criar corrida:", err);
       if (err.code === 'permission-denied') {

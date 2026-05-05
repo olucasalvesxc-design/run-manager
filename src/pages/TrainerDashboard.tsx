@@ -223,13 +223,13 @@ const TrainerDashboard = () => {
                        </div>
                        <div className="flex items-center gap-2 sm:gap-3 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                           <Link 
-                            to={`/dashboard/trainer/client/${client.id}`}
+                            to={`/organizer/trainer/client/${client.id}`}
                             className="flex-1 sm:flex-none text-center bg-white/5 hover:bg-white/10 text-white px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl text-[8px] sm:text-[9px] font-black uppercase tracking-widest transition-all border border-white/10"
                           >
                             Ver Aluno
                           </Link>
                           <Link 
-                             to={`/dashboard/trainer/workout/new?clientId=${client.id}`}
+                             to={`/organizer/trainer/workout/new?clientId=${client.id}`}
                              className="flex-1 sm:flex-none text-center bg-yellow-400 text-slate-950 px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl text-[8px] sm:text-[9px] font-black uppercase tracking-widest transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2 shadow-lg hover:bg-yellow-300"
                           >
                              <Plus className="w-3 h-3" />

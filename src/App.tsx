@@ -85,6 +85,9 @@ export default function App() {
               <Route path="/training-generator" element={<TrainingGenerator />} />
               <Route path="/atleta" element={<AthletePortal />} />
               <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/admin/dashboard" element={<Navigate to="/admin" replace />} />
+              <Route path="/admin/users" element={<Navigate to="/admin" replace />} />
+              <Route path="/admin/analytics" element={<Navigate to="/admin" replace />} />
 
               {/* Athlete Dashboard Branch */}
               <Route path="/athlete" element={

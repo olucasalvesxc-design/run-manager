@@ -513,7 +513,7 @@ const RaceDetail = () => {
 
         <div className="flex flex-col sm:flex-row gap-3 w-full xl:w-auto relative px-4 sm:px-0">
           <Link 
-            to={`/dashboard/race/${id}/participants`}
+            to={`/organizer/race/${id}/participants`}
             className="flex items-center justify-center gap-3 bg-yellow-400 text-slate-950 px-6 sm:px-8 py-4 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest hover:bg-yellow-300 transition-all shadow-[0_20px_40px_rgba(250,204,21,0.2)]"
           >
             <Users className="w-4 h-4" />
@@ -984,7 +984,7 @@ const RaceDetail = () => {
            ) : registrations.length > 0 && (
              <div className="p-8 border-t border-slate-800 bg-slate-900/20 flex justify-center">
                 <Link 
-                  to={`/dashboard/race/${id}/participants`}
+                  to={`/organizer/race/${id}/participants`}
                   className="flex items-center gap-2 text-[10px] font-black text-yellow-400 uppercase tracking-widest hover:text-yellow-300 transition-colors group"
                 >
                   Gerenciar Todos os Atletas <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />

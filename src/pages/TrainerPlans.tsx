@@ -83,7 +83,7 @@ const TrainerPlans = () => {
         trainerPlanStatus: 'active',
         updatedAt: serverTimestamp()
       });
-      navigate('/dashboard/trainer');
+      navigate('/organizer/training-consulting');
     } catch (err) {
       alert('Erro ao ativar plano');
       console.error(err);

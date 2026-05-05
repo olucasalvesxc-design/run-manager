@@ -104,7 +104,7 @@ const CreateWorkout = () => {
   return (
     <div className="max-w-5xl mx-auto space-y-10 pb-20">
       <Link 
-        to="/dashboard/trainer" 
+        to="/organizer/training-consulting"
         className="inline-flex items-center gap-2 text-slate-500 hover:text-white transition-colors group"
       >
         <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />

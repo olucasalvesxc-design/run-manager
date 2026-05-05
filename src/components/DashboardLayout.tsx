@@ -95,6 +95,7 @@ const DashboardLayout = () => {
 
   const navItems = [];
   const userRole = profile?.role || (profile?.organizerName ? 'organizer' : 'athlete');
+  const profilePath = userRole === 'organizer' ? '/organizer/settings' : '/athlete/profile';
 
   if (userRole === 'organizer') {
     navItems.push(
@@ -124,6 +125,7 @@ const DashboardLayout = () => {
   const NavItem = ({ item }: { item: any, key?: React.Key }) => (
     <Link
       to={item.path}
+      onClick={() => console.log('[Nav] click →', item.path)}
       className={cn(
         "flex items-center gap-3 px-5 py-3.5 rounded-2xl font-bold transition-all group border border-transparent",
         location.pathname === item.path 
@@ -299,7 +301,7 @@ const DashboardLayout = () => {
 
         <div className="mt-8 pt-8 border-t border-white/5 space-y-3">
           <Link 
-            to="/dashboard/profile"
+            to={profilePath}
             className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all group"
           >
              <div className="w-10 h-10 rounded-xl bg-slate-800 border border-white/10 flex items-center justify-center text-yellow-400 font-black italic overflow-hidden shrink-0 group-hover:scale-105 transition-transform">
@@ -430,7 +432,7 @@ const DashboardLayout = () => {
 
                  <div className="mt-auto pt-8 border-t border-white/5 space-y-6">
                     <Link 
-                      to="/dashboard/profile"
+                      to={profilePath}
                       onClick={() => setIsMobileMenuOpen(false)}
                       className="flex items-center gap-4 p-4 rounded-3xl bg-white/5 border border-white/10"
                     >

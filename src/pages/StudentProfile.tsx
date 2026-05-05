@@ -153,7 +153,7 @@ const StudentProfile = () => {
               
               <div className="flex items-center gap-3">
                  <Link 
-                   to={`/dashboard/trainer/workout/new?clientId=${client.id}`}
+                   to={`/organizer/trainer/workout/new?clientId=${client.id}`}
                    className="bg-yellow-400 text-slate-950 px-8 py-4 rounded-2xl font-black italic uppercase text-xs tracking-widest shadow-xl hover:scale-105 active:scale-95 transition-all flex items-center gap-3 hover:bg-yellow-300"
                  >
                     <Plus className="w-5 h-5" />
