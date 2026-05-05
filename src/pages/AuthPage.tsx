@@ -217,9 +217,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ mode, role }) => {
       >
         <div className="text-center mb-6 sm:mb-10 px-4">
           <Link to="/" className="inline-flex items-center gap-2 mb-6 sm:mb-8 group">
-             <div className="w-8 h-8 sm:w-10 sm:h-10 bg-yellow-400 rounded-lg flex items-center justify-center transform group-hover:rotate-12 transition-transform duration-300 shadow-[0_0_20px_rgba(250,204,21,0.3)]">
-                <Zap className="text-black w-5 h-5 sm:w-6 sm:h-6 fill-current" />
-             </div>
+             <img src="/logo-opt.png" alt="RunManager" className="w-8 h-8 sm:w-10 sm:h-10 object-contain group-hover:scale-110 transition-transform duration-300" />
              <span className="text-xl sm:text-2xl font-display font-bold tracking-tight">RunManager</span>
           </Link>
           <h2 className="text-2xl sm:text-3xl font-display font-black italic uppercase tracking-tighter">

@@ -253,12 +253,12 @@ const DashboardLayout = () => {
       {/* Sidebar - Desktop */}
       <aside className="hidden lg:flex flex-col border-r border-white/5 bg-slate-950/50 backdrop-blur-xl p-8 sticky top-0 h-screen overflow-y-auto custom-scrollbar">
         <div className="flex items-center gap-3 mb-10">
-          <motion.div 
-            whileHover={{ rotate: 12, scale: 1.1 }}
-            className="w-10 h-10 bg-yellow-400 rounded-xl flex items-center justify-center shadow-[0_0_20px_rgba(250,204,21,0.2)]"
-          >
-            <Zap className="text-slate-950 w-6 h-6 fill-current" />
-          </motion.div>
+          <motion.img
+            src="/logo-opt.png"
+            alt="RunManager"
+            whileHover={{ scale: 1.1 }}
+            className="w-10 h-10 object-contain"
+          />
           <span className="text-xl font-display font-black tracking-tight italic uppercase">RunManager</span>
         </div>
 
@@ -330,9 +330,7 @@ const DashboardLayout = () => {
         {/* Mobile Nav Header */}
         <header className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-slate-950/80 backdrop-blur-2xl border-b border-white/5 p-4 flex justify-between items-center h-16">
            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-yellow-400 rounded-xl flex items-center justify-center transform rotate-12 shadow-[0_0_15px_rgba(250,204,21,0.2)]">
-                <Zap className="text-slate-950 w-5 h-5 fill-current" />
-              </div>
+              <img src="/logo-opt.png" alt="RunManager" className="w-8 h-8 object-contain" />
               <span className="text-lg font-display font-black tracking-tight italic uppercase">RunManager</span>
            </div>
            <div className="flex items-center gap-2">
@@ -377,9 +375,7 @@ const DashboardLayout = () => {
               >
                  <div className="flex justify-between items-center mb-10">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-yellow-400 rounded-xl flex items-center justify-center transform rotate-12 shadow-xl">
-                        <Zap className="text-slate-950 w-6 h-6 fill-current" />
-                      </div>
+                      <img src="/logo-opt.png" alt="RunManager" className="w-10 h-10 object-contain" />
                       <span className="text-xl font-display font-black tracking-tight italic uppercase">Menu</span>
                     </div>
                     <button 
