@@ -1,14 +1,23 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, setPersistence, browserLocalPersistence } from 'firebase/auth';
 import { initializeFirestore, doc, getDocFromServer } from 'firebase/firestore';
-import firebaseConfig from '../../firebase-applet-config.json';
+
+const firebaseConfig = {
+  projectId:         "gen-lang-client-0008224099",
+  appId:             "1:299083734583:web:91d5eea65826015b2ae9b2",
+  apiKey:            "AIzaSyDFki9Lnz0CSYSv_eiOhRSWO7TV7LySaGs",
+  authDomain:        "gen-lang-client-0008224099.firebaseapp.com",
+  storageBucket:     "gen-lang-client-0008224099.firebasestorage.app",
+  messagingSenderId: "299083734583",
+};
+
+const FIRESTORE_DATABASE_ID = "ai-studio-c6f9a803-d8e1-488c-bfab-8c9457ff9904";
 
 const app = initializeApp(firebaseConfig);
 
-// Initialize Firestore with experimental long polling for better connectivity in proxies/sandboxes
 export const db = initializeFirestore(app, {
   experimentalForceLongPolling: true,
-}, (firebaseConfig as any).firestoreDatabaseId);
+}, FIRESTORE_DATABASE_ID);
 
 // Critical Constraint: Test connection on boot
 async function testConnection() {
