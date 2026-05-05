@@ -1,0 +1,227 @@
+{
+  "entities": {
+    "Profile": {
+      "title": "Profile",
+      "description": "User profile with role and subscription details",
+      "type": "object",
+      "properties": {
+        "role": { "type": "string", "enum": ["athlete", "organizer"] },
+        "organizerName": { "type": "string" },
+        "bio": { "type": "string" },
+        "businessPhone": { "type": "string" },
+        "businessEmail": { "type": "string" },
+        "whatsapp": { "type": "string" },
+        "instagram": { "type": "string" },
+        "pixKey": { "type": "string" },
+        "pixKeyType": { "type": "string", "enum": ["cpf", "cnpj", "email", "phone", "random"] },
+        "pixName": { "type": "string" },
+        "pixDocument": { "type": "string" },
+        "pixProofWhatsapp": { "type": "string" },
+        "profileImageUrl": { "type": "string" },
+        "planName": { "type": "string", "enum": ["free", "pro", "elite"] },
+        "planStatus": { "type": "string", "enum": ["active", "canceled", "expired", "pending"] },
+        "subscriptionId": { "type": "string" },
+        "currentPeriodStart": { "type": "string", "format": "date-time" },
+        "currentPeriodEnd": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "System alerts for the organizer",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "type": { "type": "string", "enum": ["capacity_alert"] },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "raceId": { "type": "string" },
+        "read": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "type", "title", "message", "read", "createdAt"]
+    },
+    "Race": {
+      "title": "Race",
+      "description": "A running event created by an organizer",
+      "type": "object",
+      "properties": {
+        "organizerId": { "type": "string" },
+        "name": { "type": "string" },
+        "date": { "type": "string" },
+        "time": { "type": "string" },
+        "location": { "type": "string" },
+        "description": { "type": "string" },
+        "distance": { "type": "string" },
+        "type": { "type": "string", "enum": ["street", "treadmill", "online"] },
+        "price": { "type": "number" },
+        "participationType": { "type": "string", "enum": ["free", "paid", "beneficent"] },
+        "donationDescription": { "type": "string" },
+        "capacity": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["organizerId", "name", "date", "participationType"]
+    },
+    "Registration": {
+      "title": "Registration",
+      "description": "A runner's registration for a specific race",
+      "type": "object",
+      "properties": {
+        "raceId": { "type": "string" },
+        "organizerId": { "type": "string" },
+        "runnerName": { "type": "string" },
+        "email": { "type": "string" },
+        "whatsapp": { "type": "string" },
+        "gender": { "type": "string", "enum": ["male", "female"] },
+        "birthDate": { "type": "string" },
+        "age": { "type": "number" },
+        "city": { "type": "string" },
+        "jerseySize": { "type": "string" },
+        "emergencyContact": { "type": "string" },
+        "team": { "type": "string" },
+        "cpf": { "type": "string" },
+        "status": { "type": "string", "enum": ["aguardando_pagamento", "aguardando_doacao", "confirmado", "pago", "cancelado"] },
+        "paymentMethod": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["raceId", "organizerId", "runnerName", "email", "gender", "status"]
+    },
+    "TrainingPlan": {
+      "title": "Training Plan",
+      "description": "A generated training schedule",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "targetDistance": { "type": "string" },
+        "currentLevel": { "type": "string" },
+        "schedule": { "type": "array" },
+        "tips": { "type": "array" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "title", "schedule", "tips", "createdAt"]
+    },
+    "TrainingSubscription": {
+      "title": "Training Subscription",
+      "description": "User subscription for training generator access",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "status": { "type": "string", "enum": ["active", "expired"] },
+        "expiresAt": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "status", "expiresAt", "createdAt"]
+    },
+    "TrainerClient": {
+      "title": "Trainer Client",
+      "description": "Student/Client of a trainer",
+      "type": "object",
+      "properties": {
+        "trainerId": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "whatsapp": { "type": "string" },
+        "goal": { "type": "string" },
+        "status": { "type": "string", "enum": ["active", "paused", "encerrado"] },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["trainerId", "name", "email", "status"]
+    },
+    "Workout": {
+      "title": "Workout",
+      "description": "A workout prescribed to a client",
+      "type": "object",
+      "properties": {
+        "trainerId": { "type": "string" },
+        "clientId": { "type": "string" },
+        "title": { "type": "string" },
+        "goal": { "type": "string" },
+        "division": { "type": "string" },
+        "exercises": { "type": "array" },
+        "notes": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "in_progress", "completed", "em_andamento", "concluido"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["trainerId", "clientId", "title", "status", "createdAt"]
+    },
+    "TrainingExecution": {
+      "title": "Training Execution",
+      "description": "Real-time log of a workout sesssion",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "trainingId": { "type": "string" },
+        "activity": { "type": "string" },
+        "status": { "type": "string", "enum": ["em_andamento", "concluido"] },
+        "startTime": { "type": "string", "format": "date-time" },
+        "completedAt": { "type": "string", "format": "date-time" },
+        "duration": { "type": "number" },
+        "completedSteps": { "type": "number" },
+        "feedback": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "status", "startTime", "createdAt"]
+    },
+    "Consultation": {
+      "title": "Consultation",
+      "description": "Scheduled consultation session",
+      "type": "object",
+      "properties": {
+        "trainerId": { "type": "string" },
+        "clientId": { "type": "string" },
+        "clientName": { "type": "string" },
+        "date": { "type": "string" },
+        "time": { "type": "string" },
+        "type": { "type": "string", "enum": ["online", "presencial"] },
+        "status": { "type": "string", "enum": ["scheduled", "finished", "canceled"] },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["trainerId", "clientId", "date", "time", "type", "status"]
+    }
+  },
+  "firestore": {
+    "/profiles/{userId}": {
+      "schema": "Profile",
+      "description": "Organizer profiles"
+    },
+    "/notifications/{notificationId}": {
+      "schema": "Notification",
+      "description": "System notifications"
+    },
+    "/races/{raceId}": {
+      "schema": "Race",
+      "description": "Race event details"
+    },
+    "/registrations/{registrationId}": {
+      "schema": "Registration",
+      "description": "Runner registration entries"
+    },
+    "/training_plans/{planId}": {
+      "schema": "TrainingPlan",
+      "description": "Generated training plans"
+    },
+    "/training_subscriptions/{userId}": {
+      "schema": "TrainingSubscription",
+      "description": "User training subscriptions"
+    },
+    "/trainer_clients/{clientId}": {
+      "schema": "TrainerClient",
+      "description": "Students list managed by trainers"
+    },
+    "/workouts/{workoutId}": {
+      "schema": "Workout",
+      "description": "Workouts prescribed to students"
+    },
+    "/consultations/{consultationId}": {
+      "schema": "Consultation",
+      "description": "Consultation schedules"
+    },
+    "/training_executions/{executionId}": {
+      "schema": "TrainingExecution",
+      "description": "Real-time records of training sessions"
+    }
+  }
+}
