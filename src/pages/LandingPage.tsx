@@ -47,9 +47,11 @@ const LandingPage = () => {
       {/* Navigation */}
       <nav className="container mx-auto px-4 sm:px-6 py-4 sm:py-8 flex justify-between items-center relative z-50">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 sm:w-10 sm:h-10 bg-white text-black rounded-lg sm:rounded-xl flex items-center justify-center transform hover:rotate-12 transition-all duration-500 shadow-2xl hover:bg-yellow-400">
-            <Zap className="w-5 h-5 sm:w-6 sm:h-6 fill-current" />
-          </div>
+          <img
+            src="/logo-opt.png"
+            alt="RunManager"
+            className="w-8 h-8 sm:w-10 sm:h-10 object-contain hover:scale-110 transition-transform duration-300"
+          />
           <span className="text-base sm:text-2xl font-display font-black tracking-tighter italic uppercase leading-none">Run<span className="text-yellow-400">Manager</span></span>
         </div>
         <div className="hidden md:flex items-center gap-12 text-[10px] font-black uppercase tracking-[0.4em] text-slate-500">
