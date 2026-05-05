@@ -1,4 +1,4 @@
-export type RaceType = 'street' | 'treadmill' | 'online' | 'Maratona' | 'Meia' | '10k' | '5k';
+export type RaceType = 'street' | 'treadmill' | 'online';
 export type ParticipationType = 'paid' | 'beneficent' | 'free';
 export type RaceStatus = 'active' | 'paused' | 'closed';
 export type Gender = 'male' | 'female';
@@ -42,7 +42,6 @@ export interface Workout {
   id: string;
   trainerId: string;
   clientId: string;
-  clientName?: string;
   title: string;
   goal: WorkoutGoal;
   division: string; // Ex: Treino A, B, C
@@ -73,11 +72,8 @@ export interface TrainerClient {
   email: string;
   whatsapp: string;
   goal: WorkoutGoal;
-  status: 'active' | 'paused' | 'encerrado' | 'pending';
+  status: 'active' | 'paused' | 'encerrado';
   notes?: string;
-  athleteCode?: string;
-  streak?: number;
-  points?: number;
   lastWorkoutDate?: any;
   nextConsultationDate?: any;
   createdAt: any;
@@ -101,8 +97,6 @@ export interface Profile {
   pixProofWhatsapp?: string;
   planName?: string;
   planStatus?: 'active' | 'inactive' | 'trial';
-  raceCredits?: number;
-  creditsUsed?: number;
   subscriptionId?: string;
   currentPeriodStart?: any;
   currentPeriodEnd?: any;
@@ -126,7 +120,6 @@ export interface Race {
   capacity: number;
   status: RaceStatus;
   logoUrl?: string;
-  link?: string;
   createdAt: any;
 }
 

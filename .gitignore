@@ -6,5 +6,7 @@ coverage/
 *.log
 .env*
 !.env.example
-*service-account*.json
-*-credentials.json
+firebase-applet-config.json
+*-service-account*.json
+dev-output.txt
+dev-error.txt

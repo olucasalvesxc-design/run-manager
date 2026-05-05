@@ -1,352 +1,518 @@
-import React, { useState } from 'react';
-import { db } from '../lib/firebase';
-import { collection, addDoc, serverTimestamp, doc, updateDoc } from 'firebase/firestore';
-import { useAuth } from '../hooks/useAuth';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { db, auth } from '../lib/firebase';
+import { useAuth } from '../hooks/useAuth';
+import { RaceType, ParticipationType } from '../types';
 import { 
   Trophy, 
   Calendar, 
   MapPin, 
   Clock, 
-  Link as LinkIcon, 
-  DollarSign, 
-  CreditCard,
-  Target,
-  Zap,
-  ShieldCheck,
-  ChevronRight,
-  Info,
-  Loader2
+  Info, 
+  CircleDollarSign, 
+  Users,
+  ArrowLeft,
+  CheckCircle2,
+  Loader2,
+  Image as ImageIcon,
+  Upload
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
-import { cn } from '../lib/utils';
+import { motion } from 'motion/react';
 
 const CreateRace = () => {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [showCreditModal, setShowCreditModal] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     date: '',
     time: '',
     location: '',
-    type: '10k',
-    link: '',
-    organizerName: '',
-    price: '',
-    pixKey: '',
     description: '',
-    capacity: '100',
-    participationType: 'paid'
+    distance: '',
+    type: 'street' as RaceType,
+    participationType: 'paid' as ParticipationType,
+    price: 0,
+    pixKey: profile?.pixKey || '',
+    donationDescription: '',
+    capacity: 100,
+    logoUrl: ''
   });
 
-  const raceTypes = [
-    { label: '5 KM', value: '5k' },
-    { label: '10 KM', value: '10k' },
-    { label: '21 KM (MEIA)', value: '21k' },
-    { label: '42 KM (MARATONA)', value: '42k' },
-    { label: 'ULTRA', value: 'ultra' },
-    { label: 'TRAIL', value: 'trail' }
-  ];
+  useEffect(() => {
+    if (profile?.pixKey && !formData.pixKey) {
+      setFormData(prev => ({ ...prev, pixKey: profile.pixKey }));
+    }
+  }, [profile]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user || !profile) return;
+  const [uploadLoading, setUploadLoading] = useState(false);
 
-    const availableCredits = profile.raceCredits || 0;
-    const isMaster = profile.role === 'admin';
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-    if (availableCredits <= 0 && !isMaster) {
-      setShowCreditModal(true);
+    // Aumentado para 5MB para permitir o upload, mas vamos comprimir depois
+    if (file.size > 5 * 1024 * 1024) {
+      setError('A imagem é muito pesada. O limite máximo é 5MB.');
       return;
     }
 
+    setUploadLoading(true);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const img = new Image();
+      img.src = reader.result as string;
+      img.onload = () => {
+        // Lógica de Compressão via Canvas
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        // Redimensionar se for muito grande (max 1200px)
+        const MAX_WIDTH = 1200;
+        const MAX_HEIGHT = 1200;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+
+        // Exportar como JPEG comprimido (qualidade 0.7)
+        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+        
+        // Verifica se ainda assim ficou muito grande (Base64 aumenta ~33% o tamanho original)
+        // Estimativa: 800KB em base64 é seguro para o limite de 1MB do Firestore
+        if (compressedBase64.length > 800000) {
+          setError('A imagem ainda está muito grande após compressão. Tente uma imagem menos complexa ou menor.');
+          setUploadLoading(false);
+          return;
+        }
+
+        setFormData(prev => ({ ...prev, logoUrl: compressedBase64 }));
+        setUploadLoading(false);
+      };
+      img.onerror = () => {
+        setError('Erro ao processar imagem.');
+        setUploadLoading(false);
+      };
+    };
+    reader.onerror = () => {
+      setError('Erro ao ler o arquivo.');
+      setUploadLoading(false);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
     setLoading(true);
+    setError(null);
 
     try {
-      // 1. Create the race
-      await addDoc(collection(db, 'races'), {
+      if (!auth.currentUser) {
+        throw new Error('Usuário não autenticado. Por favor, faça login novamente.');
+      }
+
+      console.log("Iniciando criação da corrida...", formData);
+
+      const docRef = await addDoc(collection(db, 'races'), {
         ...formData,
-        userId: user.uid,
-        organizerEmail: user.email,
-        price: Number(formData.price),
-        capacity: Number(formData.capacity),
+        organizerId: auth.currentUser.uid,
         status: 'active',
         createdAt: serverTimestamp()
       });
 
-      // 2. Deduct credit
-      if (!isMaster) {
-        const profileRef = doc(db, 'profiles', user.uid);
-        await updateDoc(profileRef, {
-          raceCredits: availableCredits - 1,
-          creditsUsed: (profile.creditsUsed || 0) + 1
-        });
+      console.log("Corrida criada com sucesso:", docRef.id);
+      navigate(`/dashboard/race/${docRef.id}`);
+    } catch (err: any) {
+      console.error("Erro detalhado ao criar corrida:", err);
+      if (err.code === 'permission-denied') {
+        setError('Erro de permissão: Você não tem autorização para criar corridas neste projeto.');
+      } else {
+        const errorMsg = err?.message || String(err);
+        setError(`Não foi possível criar a corrida: ${errorMsg}`);
       }
-
-      navigate('/dashboard/races');
-    } catch (err) {
-      console.error(err);
-      alert('Erro ao criar corrida');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-12">
-      <AnimatePresence>
-        {showCreditModal && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-             <motion.div 
-               initial={{ opacity: 0 }}
-               animate={{ opacity: 1 }}
-               exit={{ opacity: 0 }}
-               onClick={() => setShowCreditModal(false)}
-               className="absolute inset-0 bg-black/80 backdrop-blur-md"
-             />
-             <motion.div 
-               initial={{ opacity: 0, scale: 0.9 }}
-               animate={{ opacity: 1, scale: 1 }}
-               exit={{ opacity: 0, scale: 0.9 }}
-               className="bg-[#11161D] border border-white/10 rounded-[3rem] p-10 max-w-md relative z-10 text-center shadow-2xl"
-             >
-                <div className="w-20 h-20 bg-amber-500/10 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-[0_0_50px_rgba(245,158,11,0.1)]">
-                   <Zap className="w-10 h-10 text-amber-500" />
-                </div>
-                <h2 className="text-3xl font-display font-black italic uppercase tracking-tighter mb-4">Créditos Insuficientes</h2>
-                <p className="text-slate-500 text-sm italic mb-10 leading-relaxed uppercase font-bold text-[10px] tracking-widest leading-relaxed">
-                   VOCÊ PRECISA DE CRÉDITOS DE CORRIDA PARA LANÇAR UM NOVO EVENTO NA PLATAFORMA.
-                </p>
-                <div className="space-y-4">
-                   <button 
-                     onClick={() => window.open('https://kirvano.com', '_blank')}
-                     className="w-full bg-[#3B82F6] text-white py-5 rounded-2xl font-black italic uppercase text-[10px] tracking-widest shadow-xl shadow-blue-500/20 active:scale-95 transition-all font-bold"
-                   >
-                      Comprar 5 Créditos (R$ 47)
-                   </button>
-                   <button 
-                     onClick={() => setShowCreditModal(false)}
-                     className="w-full bg-white/5 text-slate-500 py-4 rounded-2xl font-black italic uppercase text-[10px] tracking-widest hover:text-white transition-colors"
-                   >
-                      Depois eu vejo
-                   </button>
-                </div>
-             </motion.div>
+    <div className="max-w-4xl mx-auto pb-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      {error && (
+        <div className="mb-6 p-4 bg-yellow-400/10 border border-yellow-400/50 rounded-2xl text-yellow-400 text-sm font-bold flex items-center gap-3">
+          <Info className="w-5 h-5" />
+          {error}
+        </div>
+      )}
+      <div className="mb-8 px-4 sm:px-0">
+        <button 
+          onClick={() => navigate(-1)} 
+          className="flex items-center gap-2 text-slate-500 hover:text-white transition-colors mb-4 group"
+        >
+          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+          <span className="text-[10px] font-black uppercase tracking-widest italic">Voltar</span>
+        </button>
+        <h1 className="text-2xl sm:text-3xl font-display font-bold text-white flex items-center gap-3 italic leading-tight">
+          <Trophy className="w-6 h-6 sm:w-8 sm:h-8 text-yellow-400 shrink-0" />
+          Criar Nova Corrida
+        </h1>
+        <p className="text-sm text-slate-400 mt-1">Preencha os detalhes para lançar seu evento.</p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8 px-4 sm:px-0">
+        {/* Info Básica */}
+        <div className="bg-slate-900/50 border border-slate-800 rounded-[2rem] sm:rounded-3xl p-6 sm:p-8 space-y-6">
+          <div>
+            <label className="block text-[10px] font-black text-slate-500 mb-3 uppercase tracking-wider flex items-center gap-2 italic">
+              <Info className="w-4 h-4 text-slate-600" /> Nome da Corrida
+            </label>
+            <input 
+              required
+              type="text"
+              placeholder="Ex: Treino de Sábado - Ibirapuera"
+              value={formData.name}
+              onChange={e => setFormData({ ...formData, name: e.target.value })}
+              className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-5 py-4 text-base sm:text-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all font-medium text-white shadow-inner"
+            />
           </div>
-        )}
-      </AnimatePresence>
-      <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-        <div>
-           <div className="flex items-center gap-3 text-[#3B82F6] mb-4">
-              <span className="text-[10px] font-black uppercase tracking-[0.4em] italic">PRO MASTER ACCESS</span>
-           </div>
-           <h1 className="flex flex-col leading-none">
-              <span className="text-4xl sm:text-6xl font-display font-black italic uppercase tracking-tighter text-slate-800">Organizar</span>
-              <span className="text-5xl sm:text-7xl font-display font-black italic uppercase tracking-tighter text-white -mt-2">Nova Prova</span>
-           </h1>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-bold text-slate-400 mb-3 uppercase tracking-wider flex items-center gap-2">
+                <Calendar className="w-4 h-4" /> Data do Evento
+              </label>
+              <input 
+                required
+                type="date"
+                value={formData.date}
+                onChange={e => setFormData({ ...formData, date: e.target.value })}
+                className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-5 py-4 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all text-white"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-slate-400 mb-3 uppercase tracking-wider flex items-center gap-2">
+                <Clock className="w-4 h-4" /> Horário
+              </label>
+              <input 
+                required
+                type="time"
+                value={formData.time}
+                onChange={e => setFormData({ ...formData, time: e.target.value })}
+                className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-5 py-4 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all text-white"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-slate-400 mb-3 uppercase tracking-wider flex items-center gap-2">
+              <MapPin className="w-4 h-4" /> Localização
+            </label>
+            <input 
+              required
+              type="text"
+              placeholder="Ex: Parque do Ibirapuera - Portão 7"
+              value={formData.location}
+              onChange={e => setFormData({ ...formData, location: e.target.value })}
+              className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-5 py-4 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all text-white"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-slate-400 mb-3 uppercase tracking-wider flex items-center gap-2">
+              <Trophy className="w-4 h-4" /> Distância
+            </label>
+            <input 
+              required
+              type="text"
+              placeholder="Ex: 5km, 10km, Meia Maratona"
+              value={formData.distance}
+              onChange={e => setFormData({ ...formData, distance: e.target.value })}
+              className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-5 py-4 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all text-white"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-slate-400 mb-3 uppercase tracking-wider flex items-center gap-2">
+              Descrição do Evento
+            </label>
+            <textarea 
+              rows={4}
+              placeholder="Detalhes sobre o percurso, ponto de encontro e recomendações..."
+              value={formData.description}
+              onChange={e => setFormData({ ...formData, description: e.target.value })}
+              className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-5 py-4 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all text-white resize-none"
+            />
+          </div>
         </div>
-        
-        <div className="flex items-center gap-3 bg-[#11161D] px-6 py-4 rounded-3xl border border-white/5">
-           <Zap className="w-5 h-5 text-[#3B82F6] animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.3)]" />
-           <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 italic">Padrão Elite de Provas</span>
-        </div>
-      </header>
 
-      <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* Informações Básicas */}
-        <div className="bg-[#11161D] p-8 sm:p-12 rounded-[3.5rem] border border-white/5 space-y-10 shadow-2xl">
-           <div className="flex items-center gap-3 mb-4">
-              <ShieldCheck className="w-5 h-5 text-[#3B82F6]" />
-              <h2 className="text-[10px] font-black uppercase tracking-widest text-slate-500 italic">Dados do Evento</h2>
-           </div>
+        {/* Logo do Evento */}
+        <div className="bg-slate-900/50 border border-slate-800 rounded-3xl p-8 space-y-6">
+          <label className="block text-sm font-bold text-slate-400 mb-3 uppercase tracking-wider flex items-center gap-2">
+            <ImageIcon className="w-4 h-4" /> Logo do Evento
+          </label>
+          <div className="flex flex-col md:flex-row gap-8 items-center">
+            <motion.div 
+              whileHover={{ scale: 1.02 }}
+              className="w-40 h-40 bg-slate-950 border-2 border-dashed border-slate-800 rounded-3xl flex items-center justify-center overflow-hidden shrink-0 relative group"
+            >
+              {formData.logoUrl ? (
+                <>
+                  <img 
+                    src={formData.logoUrl} 
+                    alt="Logo Preview" 
+                    className="w-full h-full object-contain p-4"
+                  />
+                  <button 
+                    type="button"
+                    onClick={() => setFormData({ ...formData, logoUrl: '' })}
+                    className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-xs font-bold text-white uppercase"
+                  >
+                    Remover
+                  </button>
+                </>
+              ) : (
+                <div className="flex flex-col items-center gap-3 opacity-30 group-hover:opacity-100 transition-opacity">
+                  <ImageIcon className="w-12 h-12 text-slate-500" />
+                  <span className="text-[10px] font-black uppercase tracking-tighter">Preview</span>
+                </div>
+              )}
+              {uploadLoading && (
+                <div className="absolute inset-0 bg-slate-950/80 flex items-center justify-center">
+                  <Loader2 className="w-8 h-8 text-yellow-400 animate-spin" />
+                </div>
+              )}
+            </motion.div>
 
-           <div className="space-y-6">
-              <div className="space-y-2">
-                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic ml-2">Nome da Corrida</label>
-                 <input 
-                   required
-                   value={formData.name}
-                   onChange={e => setFormData({...formData, name: e.target.value})}
-                   className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-sm font-medium focus:outline-none focus:border-[#3B82F6] transition-colors text-white"
-                   placeholder="EX: MARATONA DO RECIFE 2025"
-                 />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic ml-2">Data</label>
-                     <input 
-                       required
-                       type="date"
-                       value={formData.date}
-                       onChange={e => setFormData({...formData, date: e.target.value})}
-                       className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-sm font-medium focus:outline-none focus:border-[#3B82F6] transition-colors text-white color-scheme-dark"
-                     />
+            <div className="flex-1 w-full space-y-4">
+              <div className="flex flex-col sm:flex-row gap-4">
+                <label className="flex-1 cursor-pointer">
+                  <div className="bg-white/5 border border-white/10 hover:bg-white/10 transition-all rounded-2xl px-6 py-5 flex items-center gap-4 group">
+                    <div className="w-12 h-12 bg-yellow-400 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                      <Upload className="w-6 h-6 text-slate-950" />
+                    </div>
+                    <div className="text-left">
+                      <div className="text-sm font-bold text-white">Subir Imagem</div>
+                      <div className="text-[10px] text-slate-500 uppercase font-black">PNG, JPG ou SVG (Max 5MB - Compressão Automática)</div>
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic ml-2">Horário Largada</label>
-                     <input 
-                       required
-                       type="time"
-                       value={formData.time}
-                       onChange={e => setFormData({...formData, time: e.target.value})}
-                       className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-sm font-medium focus:outline-none focus:border-[#3B82F6] transition-colors text-white color-scheme-dark"
-                     />
-                  </div>
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    className="hidden" 
+                    onChange={handleFileUpload}
+                  />
+                </label>
+
+                <div className="hidden sm:flex items-center text-slate-700 font-black uppercase italic text-xs px-2">OU</div>
+
+                <div className="flex-[1.5]">
+                  <input 
+                    type="text"
+                    placeholder="Cole a URL da imagem aqui..."
+                    value={formData.logoUrl.startsWith('data:') ? '' : formData.logoUrl}
+                    onChange={e => setFormData({ ...formData, logoUrl: e.target.value })}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-5 py-[1.375rem] focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all text-white placeholder:text-slate-700 text-sm"
+                  />
+                </div>
               </div>
 
-              <div className="space-y-2">
-                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic ml-2">Local / Endereço</label>
-                 <input 
-                   required
-                   value={formData.location}
-                   onChange={e => setFormData({...formData, location: e.target.value})}
-                   className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-sm font-medium focus:outline-none focus:border-[#3B82F6] transition-colors text-white"
-                   placeholder="Rua da Aurora, Recife - PE"
-                 />
+              <div className="bg-slate-950/50 p-4 rounded-2xl border border-slate-800/50">
+                <p className="text-[10px] text-slate-500 uppercase font-bold tracking-tight leading-relaxed flex items-start gap-2">
+                  <Info className="w-3 h-3 mt-0.5 text-yellow-400" />
+                  A logo é essencial para dar identidade à sua corrida. Ela aparecerá no topo do formulário de inscrição, no dashboard do atleta e no certificado de conclusão.
+                </p>
               </div>
-
-              <div className="space-y-2">
-                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic ml-2">Distância Principal</label>
-                 <div className="grid grid-cols-2 gap-3">
-                    {raceTypes.map(type => (
-                      <button
-                        key={type.value}
-                        type="button"
-                        onClick={() => setFormData({...formData, type: type.value})}
-                        className={cn(
-                          "px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all italic border",
-                          formData.type === type.value 
-                            ? "bg-[#3B82F6] text-white border-[#3B82F6] shadow-lg shadow-[#3B82F6]/20" 
-                            : "bg-black/40 border-white/10 text-slate-500 hover:text-white"
-                        )}
-                      >
-                        {type.label}
-                      </button>
-                    ))}
-                 </div>
-              </div>
-
-              <div className="space-y-2">
-                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic ml-2">Vagas Disponíveis</label>
-                 <input 
-                   type="number"
-                   value={formData.capacity}
-                   onChange={e => setFormData({...formData, capacity: e.target.value})}
-                   className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-sm font-medium focus:outline-none focus:border-[#3B82F6] transition-colors text-white"
-                   placeholder="Ex: 500"
-                 />
-              </div>
-           </div>
+            </div>
+          </div>
         </div>
 
-        {/* Financeiro e Extras */}
-        <div className="space-y-8">
-           <div className="bg-[#11161D] p-8 sm:p-12 rounded-[3.5rem] border border-white/5 space-y-10 shadow-2xl">
-              <div className="flex items-center gap-3 mb-4">
-                 <CreditCard className="w-5 h-5 text-[#3B82F6]" />
-                 <h2 className="text-[10px] font-black uppercase tracking-widest text-slate-500 italic">Finanças e Link</h2>
-              </div>
-
-              <div className="space-y-6">
-                 <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic ml-2">Tipo de Participação</label>
-                    <div className="flex bg-black/40 p-1.5 rounded-2xl border border-white/5">
-                       {['paid', 'free'].map(type => (
-                         <button
-                           key={type}
-                           type="button"
-                           onClick={() => setFormData({...formData, participationType: type})}
-                           className={cn(
-                             "flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all italic",
-                             formData.participationType === type ? "bg-[#3B82F6] text-white" : "text-slate-600 hover:text-white"
-                           )}
-                         >
-                           {type === 'paid' ? 'Paga' : 'Gratuita'}
-                         </button>
-                       ))}
-                    </div>
-                 </div>
-
-                 {formData.participationType === 'paid' && (
-                   <>
-                    <div className="space-y-2">
-                       <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic ml-2 text-[#3B82F6]">Valor da Inscrição (R$)</label>
-                       <div className="relative">
-                          <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#3B82F6]" />
-                          <input 
-                            required
-                            type="number"
-                            value={formData.price}
-                            onChange={e => setFormData({...formData, price: e.target.value})}
-                            className="w-full bg-black/40 border-2 border-[#3B82F6]/30 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold tracking-widest focus:outline-none focus:border-[#3B82F6] transition-colors text-white"
-                            placeholder="0.00"
-                          />
-                       </div>
-                    </div>
-
-                    <div className="space-y-2">
-                       <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic ml-2">Chave PIX para Recebimento</label>
-                       <input 
-                         required
-                         value={formData.pixKey}
-                         onChange={e => setFormData({...formData, pixKey: e.target.value})}
-                         className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-sm font-medium focus:outline-none focus:border-[#3B82F6] transition-colors text-white"
-                         placeholder="CPF, Email ou Aleatória"
-                       />
-                       <p className="text-[9px] font-black uppercase text-slate-600 tracking-widest flex items-center gap-2 italic ml-2">
-                         <Info className="w-3 h-3 text-[#3B82F6]" />
-                         Os pagamentos vão direto para sua conta.
-                       </p>
-                    </div>
-                   </>
-                 )}
-
-                 <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic ml-2">Link Externo (Opcional)</label>
-                    <div className="relative">
-                       <LinkIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-600" />
-                       <input 
-                         value={formData.link}
-                         onChange={e => setFormData({...formData, link: e.target.value})}
-                         className="w-full bg-black/40 border border-white/10 rounded-2xl pl-12 pr-6 py-4 text-sm font-medium focus:outline-none focus:border-[#3B82F6] transition-colors text-white"
-                         placeholder="https://seu-site-de-inscricao.com"
-                       />
-                    </div>
-                 </div>
-
-                 <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic ml-2">Descrição Completa</label>
-                    <textarea 
-                      rows={4}
-                      value={formData.description}
-                      onChange={e => setFormData({...formData, description: e.target.value})}
-                      className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-sm font-medium focus:outline-none focus:border-[#3B82F6] transition-colors text-white resize-none"
-                      placeholder="Detalhes sobre kit, retirada, percursos e premiação..."
+        {/* Configurações */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+           <div className="bg-slate-900/50 border border-slate-800 rounded-3xl p-8">
+              <label className="block text-sm font-bold text-slate-400 mb-6 uppercase tracking-wider flex items-center gap-2">
+                Tipo de Corrida
+              </label>
+              <div className="grid grid-cols-1 gap-3">
+                {[
+                  { value: 'street', label: 'Rua', desc: 'Ao ar livre em parques ou ruas' },
+                  { value: 'treadmill', label: 'Esteira', desc: 'Em academias ou estúdios' },
+                  { value: 'online', label: 'Online / Remoto', desc: 'Monitorado via app' }
+                ].map(type => (
+                  <label key={type.value} className={`
+                    flex items-center gap-4 p-4 rounded-2xl border-2 cursor-pointer transition-all
+                    ${formData.type === type.value ? 'bg-yellow-400/10 border-yellow-400' : 'bg-slate-950 border-slate-800 hover:border-slate-700'}
+                  `}>
+                    <input 
+                      type="radio" 
+                      name="raceType" 
+                      className="sr-only"
+                      checked={formData.type === type.value}
+                      onChange={() => setFormData({ ...formData, type: type.value as RaceType })}
                     />
-                 </div>
+                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${formData.type === type.value ? 'border-yellow-400 bg-yellow-400' : 'border-slate-700'}`}>
+                       {formData.type === type.value && <div className="w-2 h-2 rounded-full bg-slate-950" />}
+                    </div>
+                    <div>
+                      <div className="font-bold text-white">{type.label}</div>
+                      <div className="text-xs text-slate-500">{type.desc}</div>
+                    </div>
+                  </label>
+                ))}
               </div>
            </div>
 
-           <div className="flex flex-col sm:flex-row gap-4">
-              <button 
-                type="button"
-                onClick={() => navigate('/dashboard/races')}
-                className="flex-1 bg-white/5 text-white py-5 rounded-2xl font-black italic uppercase text-[10px] tracking-[0.2em] hover:bg-white/10 transition-colors"
-              >
-                Cancelar
-              </button>
-              <button 
-                type="submit"
-                disabled={loading}
-                className="flex-[2] bg-[#3B82F6] text-white py-5 rounded-2xl font-black italic uppercase text-[10px] tracking-[0.3em] hover:bg-blue-600 transition-all shadow-[0_20px_40px_rgba(59,130,246,0.3)] hover:scale-105 active:scale-95 disabled:opacity-50 flex items-center justify-center gap-3 font-bold"
-              >
-                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Trophy className="w-5 h-5" />}
-                Lançar Prova RUNPRO
-              </button>
+           <div className="bg-slate-900/50 border border-slate-800 rounded-3xl p-8">
+              <label className="block text-sm font-bold text-slate-400 mb-6 uppercase tracking-wider flex items-center gap-2">
+                Inscrição & Participação
+              </label>
+              <div className="grid grid-cols-3 gap-4 mb-8">
+                <button 
+                  type="button"
+                  onClick={() => setFormData({ ...formData, participationType: 'paid' })}
+                  className={`py-4 rounded-2xl font-bold flex flex-col items-center gap-2 border-2 transition-all ${formData.participationType === 'paid' ? 'bg-yellow-400 border-yellow-400 text-slate-950' : 'bg-slate-950 border-slate-800 text-slate-400'}`}
+                >
+                  <CircleDollarSign className="w-6 h-6" />
+                  Paga
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => setFormData({ ...formData, participationType: 'beneficent' })}
+                  className={`py-4 rounded-2xl font-bold flex flex-col items-center gap-2 border-2 transition-all ${formData.participationType === 'beneficent' ? 'bg-yellow-400 border-yellow-400 text-slate-950' : 'bg-slate-950 border-slate-800 text-slate-400'}`}
+                >
+                  <Trophy className="w-6 h-6" />
+                  Beneficente
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => setFormData({ ...formData, participationType: 'free' })}
+                  className={`py-4 rounded-2xl font-bold flex flex-col items-center gap-2 border-2 transition-all ${formData.participationType === 'free' ? 'bg-yellow-400 border-yellow-400 text-slate-950' : 'bg-slate-950 border-slate-800 text-slate-400'}`}
+                >
+                  <Users className="w-6 h-6" />
+                  Grátis
+                </button>
+              </div>
+
+              {formData.participationType === 'paid' && (
+                <div className="space-y-6 animate-in fade-in slide-in-from-top-2 duration-300">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-2 uppercase">Valor da Inscrição (R$)</label>
+                    <div className="relative">
+                      <span className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500 font-bold">R$</span>
+                      <input 
+                        required
+                        type="number"
+                        min="0"
+                        value={formData.price}
+                        onChange={e => setFormData({ ...formData, price: Number(e.target.value) })}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-2xl pl-12 pr-5 py-4 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all text-white font-mono"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-2 uppercase">Chave PIX para Recebimento</label>
+                    <input 
+                      required
+                      type="text"
+                      placeholder="CPF, E-mail, Celular ou Chave Aleatória"
+                      value={formData.pixKey}
+                      onChange={e => setFormData({ ...formData, pixKey: e.target.value })}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-5 py-4 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all text-white"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {formData.participationType === 'beneficent' && (
+                <div className="space-y-6 animate-in fade-in slide-in-from-top-2 duration-300">
+                  <div className="bg-yellow-400/10 border border-yellow-400/20 p-4 rounded-2xl text-yellow-400 text-xs font-medium flex gap-3">
+                    <Info className="w-5 h-5 flex-shrink-0" />
+                    Incentive a doação de alimentos ou itens específicos no dia da corrida.
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-2 uppercase">Itens de doação necessários</label>
+                    <textarea 
+                      required
+                      placeholder="Ex: 2kg de Arroz ou 1kg de Feijão"
+                      value={formData.donationDescription}
+                      onChange={e => setFormData({ ...formData, donationDescription: e.target.value })}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-5 py-4 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all text-white resize-none"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {formData.participationType === 'free' && (
+                <div className="bg-green-400/10 border border-green-400/20 p-4 rounded-2xl text-green-400 text-xs font-medium flex gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                  <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
+                  Evento totalmente gratuito para os atletas. Ótimo para treinos coletivos.
+                </div>
+              )}
+
+              <div className="mt-8 space-y-4">
+                <label className="block text-xs font-bold text-slate-500 mb-2 uppercase flex items-center justify-between">
+                  Limite de Vagas <span>{formData.capacity} atletas</span>
+                </label>
+                <input 
+                  type="range"
+                  min="5"
+                  max="1000"
+                  step="5"
+                  value={formData.capacity}
+                  onChange={e => setFormData({ ...formData, capacity: Number(e.target.value) })}
+                  className="w-full accent-yellow-400 h-2 bg-slate-950 rounded-full appearance-none cursor-pointer"
+                />
+                
+                <div className="bg-black/40 border border-white/5 rounded-2xl p-6 mt-4">
+                   <div className="flex items-center justify-between mb-4">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 italic">Taxa de Criação do Evento</span>
+                      <span className="text-xl font-display font-black text-yellow-400 italic">
+                        {formData.capacity <= 100 ? 'R$ 99,00' : formData.capacity <= 500 ? 'R$ 299,00' : 'R$ 599,00'}
+                      </span>
+                   </div>
+                   <p className="text-[9px] text-slate-600 font-bold uppercase tracking-tight leading-relaxed italic">
+                     * A taxa é cobrada uma única vez no lançamento do evento, proporcional ao número de vagas disponibilizadas.
+                   </p>
+                </div>
+              </div>
            </div>
+        </div>
+
+        <div className="flex justify-end gap-4 mt-12">
+          <button 
+            type="button" 
+            onClick={() => navigate('/dashboard')}
+            className="px-8 py-4 rounded-2xl font-bold text-slate-500 hover:text-white transition-colors"
+          >
+            Cancelar
+          </button>
+          <button 
+            type="submit"
+            disabled={loading}
+            className="bg-yellow-400 text-slate-950 px-12 py-4 rounded-2xl font-bold flex items-center gap-2 hover:bg-yellow-300 transition-all hover:scale-105 shadow-[0_10px_30px_rgba(250,204,21,0.2)] disabled:opacity-50"
+          >
+            {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : (
+              <>
+                Lançar Corrida
+                <CheckCircle2 className="w-6 h-6" />
+              </>
+            )}
+          </button>
         </div>
       </form>
     </div>

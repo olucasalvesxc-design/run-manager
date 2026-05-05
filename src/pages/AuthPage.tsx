@@ -1,196 +1,350 @@
 import React, { useState } from 'react';
-import { useAuth } from '../hooks/useAuth';
-import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { motion } from 'motion/react';
+import { Link, useNavigate } from 'react-router-dom';
 import { 
-  Mail, 
-  Lock, 
-  ArrowRight, 
-  Dumbbell, 
-  Loader2, 
-  ShieldCheck, 
-  AlertCircle,
-  Zap,
-  User,
-  ArrowBigRight
-} from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword, 
+  updateProfile,
+  signInWithPopup,
+  GoogleAuthProvider
+} from 'firebase/auth';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { auth, db } from '../lib/firebase';
+import { useAuth } from '../hooks/useAuth';
+import { Zap, Loader2, ArrowLeft, Mail } from 'lucide-react';
 
-const AuthPage = () => {
-  const { signIn, signUp, signInWithGoogle } = useAuth();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const isLogin = location.pathname === '/login';
-  
+interface AuthPageProps {
+  mode: 'login' | 'register';
+  role?: 'athlete' | 'organizer';
+}
+
+const AuthPage: React.FC<AuthPageProps> = ({ mode, role }) => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    name: ''
-  });
+  const [error, setError] = useState<React.ReactNode | null>(null);
+  const navigate = useNavigate();
+  const { user, profile, loading: authLoading } = useAuth();
+
+  // Redirect if already logged in
+  React.useEffect(() => {
+    if (!authLoading && user && profile) {
+      if (profile.role === 'organizer' || profile.organizerName) {
+        navigate('/organizer/dashboard');
+      } else {
+        navigate('/athlete/dashboard');
+      }
+    }
+  }, [user, profile, authLoading, navigate]);
+
+  const generateAthleteCode = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = '';
+    for (let i = 0; i < 6; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
+
     try {
-      if (isLogin) {
-        await signIn(formData.email, formData.password);
+      if (mode === 'register') {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        await updateProfile(userCredential.user, { displayName: name });
+        
+      // Create profile with specific role
+      const profileData: any = {
+        email,
+        role: role || 'athlete',
+        athleteCode: generateAthleteCode(),
+        createdAt: new Date().toISOString()
+      };
+
+      if (role === 'organizer') {
+        profileData.organizerName = name;
       } else {
-        await signUp(formData.email, formData.password, formData.name);
+        profileData.runnerName = name;
       }
-      navigate('/dashboard');
+
+      await setDoc(doc(db, 'profiles', userCredential.user.uid), profileData);
+
+        // Initial redirect after register
+        navigate(role === 'organizer' ? '/organizer/dashboard' : '/athlete/dashboard');
+      } else {
+        await signInWithEmailAndPassword(auth, email, password);
+        
+        // Fetch profile to redirect based on role
+        const profileSnap = await getDoc(doc(db, 'profiles', auth.currentUser!.uid));
+        if (profileSnap.exists()) {
+          const profileData = profileSnap.data();
+          if (profileData.role === 'organizer' || profileData.organizerName) {
+             navigate('/organizer/dashboard');
+          } else {
+             navigate('/athlete/dashboard');
+          }
+        } else {
+          navigate('/athlete/dashboard'); // Fallback
+        }
+      }
     } catch (err: any) {
-      setError(err.message === 'Firebase: Error (auth/invalid-credential).' ? 'E-mail ou senha incorretos.' : 'Erro na autenticação. Tente novamente.');
+      console.error(err);
+      if (err.code === 'auth/operation-not-allowed') {
+        const projectId = auth.app.options.projectId;
+        setError(
+          <div className="flex flex-col gap-2">
+            <p>O método de login por e-mail/senha não está ativado no projeto "<strong>{projectId}</strong>".</p>
+            <p>Ative-o no Console do Firebase:</p>
+            <a 
+              href={`https://console.firebase.google.com/project/${projectId}/authentication/providers`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-white underline font-bold"
+            >
+              Abrir Configurações de Autenticação
+            </a>
+          </div>
+        );
+      } else if (err.code === 'auth/email-already-in-use') {
+        setError(
+          <div className="flex flex-col gap-1">
+            <p>Este e-mail já está em uso por outro usuário.</p>
+            <Link to="/login" className="text-white underline font-bold">Ir para o Login</Link>
+          </div>
+        );
+      } else if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found') {
+        setError(
+          <div className="flex flex-col gap-1">
+            <p>E-mail ou senha incorretos.</p>
+            <p className="text-xs opacity-80 mt-1">Se o projeto foi reiniciado recentemente, você pode precisar criar sua conta novamente.</p>
+            <Link to="/signup" className="text-white underline font-bold mt-1">Criar nova conta</Link>
+          </div>
+        );
+      } else if (err.code === 'auth/weak-password') {
+        setError('A senha é muito fraca. Ela deve ter pelo menos 6 caracteres.');
+      } else {
+        setError(err.message || 'Ocorreu um erro inesperado. Por favor, tente novamente.');
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  const handleGoogleLogin = async () => {
+  const handleGoogleSignIn = async () => {
     setLoading(true);
+    setError(null);
+    const provider = new GoogleAuthProvider();
+    
     try {
-      await signInWithGoogle();
-      navigate('/dashboard');
-    } catch (err) {
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+
+      // Check if profile exists, if not create it
+      const docRef = doc(db, 'profiles', user.uid);
+      const docSnap = await getDoc(docRef);
+
+      if (!docSnap.exists()) {
+        const profileData: any = {
+          email: user.email,
+          role: role || 'athlete',
+          athleteCode: generateAthleteCode(),
+          createdAt: new Date().toISOString()
+        };
+
+        const displayName = user.displayName || (role === 'organizer' ? 'Organizador' : 'Atleta');
+
+        if (role === 'organizer') {
+          profileData.organizerName = displayName;
+        } else {
+          profileData.runnerName = displayName;
+        }
+
+        await setDoc(docRef, profileData);
+        navigate(role === 'organizer' ? '/organizer/dashboard' : '/athlete/dashboard');
+      } else {
+        const profileData = docSnap.data();
+        if (profileData.role === 'organizer' || profileData.organizerName) {
+          navigate('/organizer/dashboard');
+        } else {
+          navigate('/athlete/dashboard');
+        }
+      }
+    } catch (err: any) {
       console.error(err);
+      if (err.code === 'auth/operation-not-allowed') {
+        const projectId = auth.app.options.projectId;
+        setError(
+          <div className="flex flex-col gap-2">
+            <p>O login via Google não está habilitado no Console do Firebase para o projeto "<strong>{projectId}</strong>".</p>
+            <p>Ative-o em Authentication &gt; Sign-in method.</p>
+            <a 
+              href={`https://console.firebase.google.com/project/${projectId}/authentication/providers`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-white underline font-bold"
+            >
+              Abrir Painel de Autenticação
+            </a>
+          </div>
+        );
+      } else if (err.code === 'auth/popup-closed-by-user') {
+        console.log('Login popup closed by user');
+        return;
+      } else if (err.code === 'auth/account-exists-with-different-credential') {
+        setError('Já existe uma conta com este e-mail, mas vinculada a outro método de login.');
+      } else {
+        setError(err.message || 'Falha ao autenticar com o Google. Tente novamente.');
+      }
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#05070A] text-white flex flex-col items-center justify-center p-6 font-sans overflow-hidden">
-      {/* Background Decor */}
-      <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-[#3B82F6]/5 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2" />
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-[#3B82F6]/5 rounded-full blur-[100px] translate-y-1/2 -translate-x-1/2" />
-      </div>
+    <div className="min-h-screen bg-slate-950 text-white font-sans flex items-center justify-center p-6 relative overflow-hidden">
+      {/* Background decoration */}
+      <div className="absolute top-0 right-0 w-96 h-96 bg-yellow-400/5 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2"></div>
+      <div className="absolute bottom-0 left-0 w-96 h-96 bg-yellow-400/5 rounded-full blur-[100px] translate-y-1/2 -translate-x-1/2"></div>
 
       <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
         className="w-full max-w-md relative z-10"
       >
-        <div className="text-center mb-12">
-           <Link to="/" className="inline-flex items-center gap-3 group mb-10">
-             <div className="w-10 h-10 sm:w-12 sm:h-12 bg-[#3B82F6] rounded-xl flex items-center justify-center transform group-hover:rotate-12 transition-transform duration-300 shadow-[0_0_20px_rgba(59,130,246,0.3)]">
-               <Dumbbell className="w-6 h-6 text-white" />
+        <div className="text-center mb-6 sm:mb-10 px-4">
+          <Link to="/" className="inline-flex items-center gap-2 mb-6 sm:mb-8 group">
+             <div className="w-8 h-8 sm:w-10 sm:h-10 bg-yellow-400 rounded-lg flex items-center justify-center transform group-hover:rotate-12 transition-transform duration-300 shadow-[0_0_20px_rgba(250,204,21,0.3)]">
+                <Zap className="text-black w-5 h-5 sm:w-6 sm:h-6 fill-current" />
              </div>
-             <span className="text-2xl sm:text-3xl font-display font-black italic uppercase tracking-tighter">
-               RUN<span className="text-[#3B82F6]">PRO</span>
-             </span>
-           </Link>
-           <h1 className="text-4xl sm:text-5xl font-display font-black italic uppercase tracking-tighter mb-4 text-white">
-             {isLogin ? 'Welcome Back.' : 'Join the Lab.'}
-           </h1>
-           <p className="text-slate-500 font-black uppercase tracking-widest italic text-[10px] sm:text-xs">
-             {isLogin ? 'Acesse seu painel de performance de elite.' : 'Crie sua conta e comece sua evolução profissional.'}
-           </p>
+             <span className="text-xl sm:text-2xl font-display font-bold tracking-tight">RunManager</span>
+          </Link>
+          <h2 className="text-2xl sm:text-3xl font-display font-black italic uppercase tracking-tighter">
+            {mode === 'login' ? 'Bem-vindo de volta' : `Cadastro ${role === 'organizer' ? 'Organizador' : 'Atleta'}`}
+          </h2>
+          <p className="text-slate-400 mt-2 text-xs sm:text-sm font-medium italic">
+            {mode === 'login' 
+              ? 'Acesse seu painel exclusivo' 
+              : `Crie sua conta de ${role === 'organizer' ? 'organizador' : 'atleta'} e comece agora`}
+          </p>
         </div>
 
-        <div className="bg-[#11161D] rounded-[2.5rem] sm:rounded-[3rem] p-8 sm:p-12 border border-white/5 shadow-2xl relative">
-            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#3B82F6] to-transparent" />
-            
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <AnimatePresence>
-                {error && (
-                  <motion.div 
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="bg-red-500/10 border border-red-500/20 text-red-500 px-6 py-4 rounded-2xl flex items-center gap-3 text-[10px] font-black uppercase tracking-widest italic"
-                  >
-                    <AlertCircle className="w-4 h-4 shrink-0" />
-                    {error}
-                  </motion.div>
-                )}
-              </AnimatePresence>
+        <div className="bg-slate-900/50 backdrop-blur-xl border border-white/5 p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl mx-4 sm:mx-0">
+          <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+            {mode === 'register' && (
+              <div className="space-y-2">
+                <label className="block text-[8px] sm:text-[10px] font-black text-slate-500 uppercase tracking-widest italic ml-2">Nome Completo</label>
+                <input
+                  type="text"
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full bg-slate-950 border border-white/5 rounded-xl sm:rounded-2xl px-5 sm:px-6 py-3.5 sm:py-4 focus:outline-none focus:border-yellow-400/50 transition-all font-medium text-sm"
+                  placeholder="Seu nome"
+                />
+              </div>
+            )}
+            <div className="space-y-2">
+              <label className="block text-[8px] sm:text-[10px] font-black text-slate-500 uppercase tracking-widest italic ml-2">E-mail</label>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full bg-slate-950 border border-white/5 rounded-xl sm:rounded-2xl px-5 sm:px-6 py-3.5 sm:py-4 focus:outline-none focus:border-yellow-400/50 transition-all font-medium text-sm"
+                placeholder="exemplo@email.com"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="block text-[8px] sm:text-[10px] font-black text-slate-500 uppercase tracking-widest italic ml-2">Senha</label>
+              <input
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full bg-slate-950 border border-white/5 rounded-xl sm:rounded-2xl px-5 sm:px-6 py-3.5 sm:py-4 focus:outline-none focus:border-yellow-400/50 transition-all font-medium text-sm"
+                placeholder="••••••••"
+              />
+            </div>
 
-              {!isLogin && (
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic ml-2">Nome Completo</label>
-                  <div className="relative">
-                    <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-700" />
-                    <input 
-                      required
-                      type="text"
-                      value={formData.name}
-                      onChange={e => setFormData({...formData, name: e.target.value})}
-                      placeholder="COMO QUER SER CHAMADO"
-                      className="w-full bg-black/40 border-2 border-white/5 rounded-2xl px-12 py-4 focus:outline-none focus:border-[#3B82F6]/50 transition-all font-bold italic uppercase text-xs sm:text-sm tracking-widest text-white"
-                    />
-                  </div>
-                </div>
+            {error && (
+              <div className="bg-yellow-400/10 border border-yellow-400/20 text-yellow-400 px-5 sm:px-6 py-3 sm:py-4 rounded-xl sm:rounded-2xl text-[8px] sm:text-[10px] font-black uppercase tracking-widest italic">
+                {error}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-yellow-400 text-black py-4 sm:py-5 rounded-xl sm:rounded-2xl font-black italic uppercase text-[10px] sm:text-xs tracking-[0.2em] flex items-center justify-center gap-3 hover:bg-yellow-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed group shadow-[0_20px_40px_-10px_rgba(250,204,21,0.3)]"
+            >
+              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
+                <>
+                  <Mail className="w-4 h-4 sm:w-5 sm:h-5" />
+                  {mode === 'login' ? 'Entrar Agora' : 'Finalizar'}
+                </>
               )}
+            </button>
 
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic ml-2">E-mail Profissional</label>
-                <div className="relative">
-                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-700" />
-                  <input 
-                    required
-                    type="email"
-                    value={formData.email}
-                    onChange={e => setFormData({...formData, email: e.target.value})}
-                    placeholder="atleta@runpro.com"
-                    className="w-full bg-black/40 border-2 border-white/5 rounded-2xl px-12 py-4 focus:outline-none focus:border-[#3B82F6]/50 transition-all font-bold italic uppercase text-xs sm:text-sm tracking-widest text-white"
-                  />
-                </div>
+            <div className="relative py-2 sm:py-4">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-white/5"></div>
               </div>
-
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic ml-2">Sua Senha</label>
-                <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-700" />
-                  <input 
-                    required
-                    type="password"
-                    value={formData.password}
-                    onChange={e => setFormData({...formData, password: e.target.value})}
-                    placeholder="••••••••"
-                    className="w-full bg-black/40 border-2 border-white/5 rounded-2xl px-12 py-4 focus:outline-none focus:border-[#3B82F6]/50 transition-all font-bold italic text-white"
-                  />
-                </div>
+              <div className="relative flex justify-center text-[7px] sm:text-[8px] uppercase tracking-[0.3em] font-black text-slate-500 italic">
+                <span className="bg-slate-950 px-3">Ou continue com</span>
               </div>
+            </div>
 
-              <button 
-                type="submit"
-                disabled={loading}
-                className="w-full bg-[#3B82F6] text-white py-5 rounded-2xl sm:rounded-[2rem] font-black italic uppercase text-[10px] sm:text-xs tracking-[0.2em] flex items-center justify-center gap-3 hover:bg-blue-600 transition-all disabled:opacity-50 group shadow-[0_20px_40px_-10px_rgba(59,130,246,0.3)] font-bold"
-              >
-                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <ShieldCheck className="w-5 h-5" />}
-                {isLogin ? 'Entrar no Sistema' : 'Criar Perfil Elite'}
-              </button>
+            <button
+              type="button"
+              onClick={handleGoogleSignIn}
+              disabled={loading}
+              className="w-full bg-white text-slate-950 py-4 sm:py-5 rounded-xl sm:rounded-2xl font-black italic uppercase text-[10px] sm:text-xs tracking-[0.2em] flex items-center justify-center gap-3 hover:bg-slate-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-xl"
+            >
+              <svg className="w-4 h-4 sm:w-5 sm:h-5" viewBox="0 0 24 24">
+                <path
+                  fill="currentColor"
+                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                />
+                <path
+                  fill="currentColor"
+                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                />
+                <path
+                  fill="currentColor"
+                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"
+                />
+                <path
+                  fill="currentColor"
+                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                />
+              </svg>
+              Google
+            </button>
+          </form>
 
-              <div className="relative py-4">
-                 <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-white/5"></div>
-                 </div>
-                 <div className="relative flex justify-center text-[8px] font-black uppercase tracking-widest">
-                    <span className="bg-[#11161D] px-4 text-slate-700">Ou continue com</span>
-                 </div>
-              </div>
-
-              <button 
-                type="button"
-                onClick={handleGoogleLogin}
-                className="w-full bg-white/5 border border-white/10 text-white py-5 rounded-2xl font-black italic uppercase text-[10px] tracking-widest flex items-center justify-center gap-3 hover:bg-white/10 transition-all"
-              >
-                <img src="https://www.google.com/favicon.ico" className="w-4 h-4 grayscale opacity-50 contrast-150" alt="Google" />
-                Google Authenticator
-              </button>
-            </form>
+          <div className="mt-8 text-center text-slate-500 text-[10px] font-black uppercase tracking-widest italic">
+            {mode === 'login' ? (
+              <>
+                Não tem uma conta?{' '}
+                <Link to="/signup" className="text-yellow-400 hover:underline">Cadastre-se</Link>
+              </>
+            ) : (
+              <>
+                Já tem uma conta?{' '}
+                <Link to="/login" className="text-yellow-400 hover:underline">Faça login</Link>
+              </>
+            )}
+          </div>
         </div>
 
-        <div className="mt-10 text-center space-y-4">
-           <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest italic">
-              {isLogin ? "Não tem uma conta?" : "Já possui perfil?"}
-              <Link to={isLogin ? "/signup/select" : "/login"} className="text-[#3B82F6] hover:underline ml-2">
-                 {isLogin ? 'Criar Nova' : 'Fazer Login'}
-              </Link>
-           </p>
-        </div>
+        <Link to="/" className="flex items-center gap-2 text-slate-600 hover:text-white transition-colors mt-8 mx-auto w-fit text-[10px] font-black uppercase tracking-widest italic">
+           <ArrowLeft className="w-4 h-4" />
+           Voltar para o Início
+        </Link>
       </motion.div>
     </div>
   );

@@ -6,7 +6,11 @@ import {
   Dumbbell, 
   ArrowLeft, 
   Save, 
+  Calendar,
+  Type,
+  FileText,
   Activity as ActivityIcon,
+  Award,
   Loader2,
   CheckCircle2,
   Plus,
@@ -78,10 +82,8 @@ const CreateWorkout = () => {
 
     setLoading(true);
     try {
-      const client = clients.find(c => c.id === formData.clientId);
       await addDoc(collection(db, 'workouts'), {
         trainerId: user.uid,
-        clientEmail: client?.email || '',
         ...formData,
         exercises,
         status: 'pending',
@@ -97,6 +99,8 @@ const CreateWorkout = () => {
     }
   };
 
+  const goals: WorkoutGoal[] = ['emagrecimento', 'hipertrofia', 'resistencia', 'corrida', 'mobilidade', 'reabilitacao'];
+
   return (
     <div className="max-w-5xl mx-auto space-y-10 pb-20">
       <Link 
@@ -109,12 +113,12 @@ const CreateWorkout = () => {
 
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-10 border-b border-white/5 px-4 sm:px-0">
         <div className="space-y-4">
-           <div className="flex items-center gap-3 text-[#3B82F6]">
+           <div className="flex items-center gap-3 text-yellow-400">
               <Dumbbell className="w-5 h-5" />
               <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.3em] italic">Nova Prescrição</span>
            </div>
            <h1 className="text-4xl sm:text-5xl md:text-7xl font-display font-black italic uppercase tracking-tighter leading-none">
-             Configurar <span className="text-[#3B82F6]">Treino.</span>
+             Configurar <span className="text-yellow-400">Treino.</span>
            </h1>
         </div>
       </div>
@@ -127,7 +131,7 @@ const CreateWorkout = () => {
             className="bg-green-500/10 border-2 border-green-500/20 p-12 rounded-[3.5rem] text-center space-y-6"
           >
              <div className="w-20 h-20 bg-green-500 rounded-3xl flex items-center justify-center mx-auto shadow-xl">
-                <CheckCircle2 className="w-10 h-10 text-white" />
+                <CheckCircle2 className="w-10 h-10 text-slate-950" />
              </div>
              <h2 className="text-3xl font-display font-black italic uppercase tracking-wider text-green-500">Treino Enviado!</h2>
              <p className="text-slate-400 text-xs font-black uppercase tracking-widest italic">O atleta já pode visualizar no painel dele.</p>
@@ -148,11 +152,11 @@ const CreateWorkout = () => {
                           required
                           value={formData.clientId}
                           onChange={e => setFormData({...formData, clientId: e.target.value})}
-                          className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-sm font-medium focus:outline-none focus:border-[#3B82F6] transition-colors appearance-none text-white lg:text-xs"
+                          className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-sm font-medium focus:outline-none focus:border-yellow-400 transition-colors appearance-none text-white lg:text-xs"
                         >
                           <option value="">Selecione o aluno...</option>
                           {clients.map(client => (
-                            <option key={client.id} value={client.id} className="bg-[#11161D]">{client.name}</option>
+                            <option key={client.id} value={client.id} className="bg-slate-900">{client.name}</option>
                           ))}
                         </select>
                      </div>
@@ -166,7 +170,7 @@ const CreateWorkout = () => {
                           required
                           value={formData.goal}
                           onChange={e => setFormData({...formData, goal: e.target.value as WorkoutGoal})}
-                          className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-sm font-medium focus:outline-none focus:border-[#3B82F6] transition-colors appearance-none text-white lg:text-xs"
+                          className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-sm font-medium focus:outline-none focus:border-yellow-400 transition-colors appearance-none text-white lg:text-xs"
                         >
                           <option value="hipertrofia">Hipertrofia</option>
                           <option value="ganho_massa">Ganho de Massa</option>
@@ -196,7 +200,7 @@ const CreateWorkout = () => {
                                className={cn(
                                  "px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all",
                                  formData.division === `Treino ${letter}` 
-                                   ? "bg-[#3B82F6] text-white border-[#3B82F6]" 
+                                   ? "bg-yellow-400 text-black border-yellow-400" 
                                    : "bg-black/20 text-slate-500 border-white/5 hover:border-white/20"
                                )}
                              >
@@ -208,7 +212,7 @@ const CreateWorkout = () => {
                           required
                           value={formData.division}
                           onChange={e => setFormData({...formData, division: e.target.value})}
-                          className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-sm font-medium focus:outline-none focus:border-[#3B82F6] transition-colors"
+                          className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-sm font-medium focus:outline-none focus:border-yellow-400 transition-colors"
                           placeholder="Ex: Treino A ou Full Body"
                         />
                      </div>
@@ -249,7 +253,7 @@ const CreateWorkout = () => {
                                        required
                                        value={ex.name}
                                        onChange={e => updateExercise(ex.id, 'name', e.target.value)}
-                                       className="w-full bg-slate-900 border border-white/5 rounded-xl px-4 py-2.5 text-xs font-bold focus:outline-none focus:border-[#3B82F6] transition-colors"
+                                       className="w-full bg-slate-900 border border-white/5 rounded-xl px-4 py-2.5 text-xs font-bold focus:outline-none focus:border-yellow-400 transition-colors"
                                        placeholder="Ex: Supino Reto"
                                      />
                                   </div>
@@ -259,7 +263,7 @@ const CreateWorkout = () => {
                                        type="number"
                                        value={ex.series}
                                        onChange={e => updateExercise(ex.id, 'series', parseInt(e.target.value))}
-                                       className="w-full bg-slate-900 border border-white/5 rounded-xl px-4 py-2.5 text-xs font-bold focus:outline-none focus:border-[#3B82F6] transition-colors"
+                                       className="w-full bg-slate-900 border border-white/5 rounded-xl px-4 py-2.5 text-xs font-bold focus:outline-none focus:border-yellow-400 transition-colors"
                                      />
                                   </div>
                                   <div className="space-y-2">
@@ -267,7 +271,7 @@ const CreateWorkout = () => {
                                      <input 
                                        value={ex.reps}
                                        onChange={e => updateExercise(ex.id, 'reps', e.target.value)}
-                                       className="w-full bg-slate-900 border border-white/5 rounded-xl px-4 py-2.5 text-xs font-bold focus:outline-none focus:border-[#3B82F6] transition-colors"
+                                       className="w-full bg-slate-900 border border-white/5 rounded-xl px-4 py-2.5 text-xs font-bold focus:outline-none focus:border-yellow-400 transition-colors"
                                        placeholder="12-15"
                                      />
                                   </div>
@@ -279,7 +283,7 @@ const CreateWorkout = () => {
                                      <input 
                                        value={ex.rest}
                                        onChange={e => updateExercise(ex.id, 'rest', e.target.value)}
-                                       className="w-full bg-slate-900 border border-white/5 rounded-xl px-4 py-2.5 text-xs font-bold focus:outline-none focus:border-[#3B82F6] transition-colors"
+                                       className="w-full bg-slate-900 border border-white/5 rounded-xl px-4 py-2.5 text-xs font-bold focus:outline-none focus:border-yellow-400 transition-colors"
                                        placeholder="60s"
                                      />
                                   </div>
@@ -290,7 +294,7 @@ const CreateWorkout = () => {
                                         <input 
                                           value={ex.videoUrl}
                                           onChange={e => updateExercise(ex.id, 'videoUrl', e.target.value)}
-                                          className="w-full bg-slate-900 border border-white/5 rounded-xl pl-9 pr-4 py-2.5 text-xs font-bold focus:outline-none focus:border-[#3B82F6] transition-colors"
+                                          className="w-full bg-slate-900 border border-white/5 rounded-xl pl-9 pr-4 py-2.5 text-xs font-bold focus:outline-none focus:border-yellow-400 transition-colors"
                                           placeholder="URL do Youtube/Instagram"
                                         />
                                      </div>
@@ -300,10 +304,10 @@ const CreateWorkout = () => {
                                <button 
                                  type="button"
                                  onClick={() => removeExercise(ex.id)}
-                                 className="absolute -top-2 -right-2 w-8 h-8 bg-[#3B82F6]/10 text-[#3B82F6] rounded-full border border-[#3B82F6]/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[#3B82F6] hover:text-white"
+                                 className="absolute -top-2 -right-2 w-8 h-8 bg-yellow-400/10 text-yellow-400 rounded-full border border-yellow-400/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-yellow-400 hover:text-black"
                                >
                                   <Trash2 className="w-4 h-4" />
-                                </button>
+                               </button>
                             </motion.div>
                           ))}
                        </AnimatePresence>
@@ -319,7 +323,7 @@ const CreateWorkout = () => {
                             required
                             value={formData.title}
                             onChange={e => setFormData({...formData, title: e.target.value})}
-                            className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-sm font-medium focus:outline-none focus:border-[#3B82F6] transition-colors"
+                            className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-sm font-medium focus:outline-none focus:border-yellow-400 transition-colors"
                             placeholder="Ex: Superiores A"
                           />
                        </div>
@@ -329,7 +333,7 @@ const CreateWorkout = () => {
                             rows={4}
                             value={formData.notes}
                             onChange={e => setFormData({...formData, notes: e.target.value})}
-                            className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-sm font-medium focus:outline-none focus:border-[#3B82F6] transition-colors resize-none"
+                            className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-sm font-medium focus:outline-none focus:border-yellow-400 transition-colors resize-none"
                             placeholder="Dicas de execução, carga sugerida, etc..."
                           />
                        </div>
@@ -342,7 +346,7 @@ const CreateWorkout = () => {
                <button 
                 type="submit"
                 disabled={loading}
-                className="w-full bg-[#3B82F6] text-white py-5 sm:py-6 rounded-2xl sm:rounded-3xl font-black italic uppercase text-xs sm:text-base tracking-widest transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-3 shadow-[0_20px_40px_rgba(59,130,246,0.3)] disabled:opacity-50"
+                className="w-full bg-yellow-400 text-black py-5 sm:py-6 rounded-2xl sm:rounded-3xl font-black italic uppercase text-xs sm:text-base tracking-widest transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-3 shadow-[0_20px_40px_rgba(250,204,21,0.3)] disabled:opacity-50"
               >
                 {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : (
                   <>

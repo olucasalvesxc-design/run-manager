@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { db } from '../lib/firebase';
-import { doc, collection, query, where, orderBy, onSnapshot, addDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, orderBy, onSnapshot, addDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { 
   ArrowLeft, 
   Dumbbell, 
   Calendar, 
   MessageSquare, 
+  CheckCircle2, 
   Clock, 
   TrendingUp,
   Mail,
@@ -17,35 +18,11 @@ import {
   FileText,
   BadgeAlert,
   X,
-  ExternalLink,
-  Zap,
-  Trophy,
-  Medal,
-  Flame,
-  Activity,
-  Star,
-  CheckCircle2
+  ExternalLink
 } from 'lucide-react';
 import { TrainerClient, Workout, Consultation } from '../types';
 import { cn, formatDate, formatGoal } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
-
-const StatCard = ({ label, value, icon: Icon, subValue, color }: { label: string, value: string | number, icon: any, subValue: string, color: string }) => (
-  <div className="bg-[#11161D] border border-white/5 rounded-[2rem] p-6 group hover:border-[#3B82F6]/30 transition-all transition-all relative overflow-hidden backdrop-blur-md">
-    <div className="flex items-center justify-between mb-4">
-      <div className={cn("p-2 rounded-xl bg-black/40", color.replace('text-', 'text-opacity-20 bg-'))}>
-        <Icon className={cn("w-5 h-5", color)} />
-      </div>
-      <span className="text-[8px] font-black uppercase tracking-widest text-slate-600 italic">Live Data</span>
-    </div>
-    <div className="text-2xl font-display font-black italic uppercase tracking-tighter text-white mb-1">{value}</div>
-    <div className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-2">{label}</div>
-    <div className="text-[8px] font-bold text-slate-700 uppercase tracking-widest">{subValue}</div>
-    <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none group-hover:scale-110 transition-transform">
-      <Icon className="w-16 h-16" />
-    </div>
-  </div>
-);
 
 const StudentProfile = () => {
   const { clientId } = useParams();
@@ -53,8 +30,6 @@ const StudentProfile = () => {
   const [client, setClient] = useState<TrainerClient | null>(null);
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [consultations, setConsultations] = useState<Consultation[]>([]);
-  const [executions, setExecutions] = useState<any[]>([]);
-  const [registrations, setRegistrations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'treinos' | 'consultorias' | 'evolucao'>('treinos');
   const [showScheduleModal, setShowScheduleModal] = useState(false);
@@ -90,24 +65,6 @@ const StudentProfile = () => {
     );
     const unsubConsultations = onSnapshot(consultationsQuery, (snap) => {
       setConsultations(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Consultation[]);
-    });
-
-    const executionsQuery = query(
-      collection(db, 'training_executions'),
-      where('userId', '==', clientId),
-      orderBy('startTime', 'desc')
-    );
-    const unsubExecutions = onSnapshot(executionsQuery, (snap) => {
-      setExecutions(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
-
-    const registrationsQuery = query(
-      collection(db, 'registrations'),
-      where('athleteId', '==', clientId),
-      orderBy('createdAt', 'desc')
-    );
-    const unsubRegistrations = onSnapshot(registrationsQuery, (snap) => {
-      setRegistrations(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       setLoading(false);
     });
 
@@ -115,8 +72,6 @@ const StudentProfile = () => {
       unsubClient();
       unsubWorkouts();
       unsubConsultations();
-      unsubExecutions();
-      unsubRegistrations();
     };
   }, [clientId]);
 
@@ -128,7 +83,6 @@ const StudentProfile = () => {
            trainerId: client.trainerId,
            clientId: clientId,
            clientName: client.name,
-           clientEmail: client.email,
            date: newConsult.date,
            time: newConsult.time,
            type: newConsult.type,
@@ -144,30 +98,10 @@ const StudentProfile = () => {
      }
   };
 
-  const stats = {
-    completedWorkouts: executions.length,
-    weeklyFrequency: Math.min(Math.round((executions.filter(e => {
-      const date = e.startTime?.toDate();
-      const now = new Date();
-      return date && (now.getTime() - date.getTime()) < 7 * 24 * 60 * 60 * 1000;
-    }).length / 7) * 4), 7),
-    racesInscribed: registrations.length,
-    racesFinished: registrations.filter(r => r.status === 'finished' || r.finished).length,
-    streak: client.streak || 0,
-    points: client.points || 0
-  };
-
-  const medals = [
-    { id: 'consistency', label: 'Consistência', desc: 'Ativo por 3 semanas', active: stats.weeklyFrequency >= 3, icon: Star },
-    { id: 'first_race', label: 'Estreante', desc: 'Primeira corrida concluída', active: stats.racesFinished >= 1, icon: Medal },
-    { id: 'streak_7', label: 'Sequência Forte', desc: '7 dias ativos', active: stats.streak >= 7, icon: Flame },
-    { id: 'elite', label: 'Elite Pro', desc: 'Mais de 50 treinos', active: stats.completedWorkouts >= 50, icon: Trophy },
-  ];
-
   if (loading || !client) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="w-8 h-8 border-4 border-[#3B82F6] border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -187,22 +121,22 @@ const StudentProfile = () => {
         <div className="flex-1 space-y-8 w-full">
            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
               <div className="flex items-center gap-6">
-                 <div className="w-24 h-24 md:w-32 md:h-32 rounded-[2.5rem] bg-slate-900 border border-white/5 flex items-center justify-center text-4xl font-display font-black italic text-[#3B82F6] shadow-2xl">
+                 <div className="w-24 h-24 md:w-32 md:h-32 rounded-[2.5rem] bg-slate-900 border border-white/5 flex items-center justify-center text-4xl font-display font-black italic text-yellow-400 shadow-2xl">
                     {client.name.charAt(0)}
                  </div>
                  <div>
                     <div className="flex items-center gap-3 mb-2">
-                       <span className="bg-[#3B82F6]/10 text-[#3B82F6] text-[8px] font-black px-3 py-1 rounded-full uppercase italic border border-[#3B82F6]/10">
+                       <span className="bg-yellow-400/10 text-yellow-400 text-[8px] font-black px-3 py-1 rounded-full uppercase italic border border-yellow-400/10">
                           {client.status}
                        </span>
                        <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest italic">Acordo Ativo</span>
                     </div>
                     <h1 className="text-4xl md:text-6xl font-display font-black italic uppercase tracking-tighter leading-none mb-4">
-                       {client.name.split(' ')[0]} <span className="text-[#3B82F6]">{client.name.split(' ').slice(1).join(' ')}</span>
+                       {client.name.split(' ')[0]} <span className="text-yellow-400">{client.name.split(' ').slice(1).join(' ')}</span>
                     </h1>
                     <div className="flex flex-wrap items-center gap-6 text-slate-500">
                        <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest italic">
-                          <Target className="w-4 h-4 text-[#3B82F6]" />
+                          <Target className="w-4 h-4 text-yellow-400" />
                           {client.goal || 'Definir Objetivo'}
                        </div>
                        <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest italic">
@@ -220,7 +154,7 @@ const StudentProfile = () => {
               <div className="flex items-center gap-3">
                  <Link 
                    to={`/dashboard/trainer/workout/new?clientId=${client.id}`}
-                   className="bg-[#3B82F6] text-white px-8 py-4 rounded-2xl font-black italic uppercase text-xs tracking-widest shadow-xl hover:scale-105 active:scale-95 transition-all flex items-center gap-3 hover:bg-blue-600 font-bold"
+                   className="bg-yellow-400 text-slate-950 px-8 py-4 rounded-2xl font-black italic uppercase text-xs tracking-widest shadow-xl hover:scale-105 active:scale-95 transition-all flex items-center gap-3 hover:bg-yellow-300"
                  >
                     <Plus className="w-5 h-5" />
                     Montar Treino
@@ -234,7 +168,7 @@ const StudentProfile = () => {
                     className="bg-slate-900 border border-white/5 text-white w-14 h-14 rounded-2xl flex items-center justify-center hover:bg-slate-800 transition-colors"
                     title="Copiar Link do Portal do Atleta"
                  >
-                    <ExternalLink className="w-5 h-5 text-[#3B82F6]" />
+                    <ExternalLink className="w-5 h-5 text-yellow-400" />
                  </button>
                  <button className="bg-slate-900 border border-white/5 text-white w-14 h-14 rounded-2xl flex items-center justify-center hover:bg-slate-800 transition-colors">
                     <MessageSquare className="w-5 h-5" />
@@ -242,76 +176,13 @@ const StudentProfile = () => {
               </div>
            </div>
 
-           {/* Key Indicators GRID */}
-           <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 px-4 md:px-0 mb-8">
-              <StatCard 
-                label="PONTOS TOTAIS" 
-                value={stats.points} 
-                icon={Zap} 
-                subValue="RANKING #12"
-                color="text-amber-500"
-              />
-              <StatCard 
-                label="TREINOS CONCLUÍDOS" 
-                value={stats.completedWorkouts} 
-                icon={Activity} 
-                subValue={`${stats.weeklyFrequency} / SEMANA`}
-                color="text-[#3B82F6]"
-              />
-              <StatCard 
-                label="STREAK ATUAL" 
-                value={`${stats.streak} DIAS`} 
-                icon={Flame} 
-                subValue="FOGO ATIVO"
-                color="text-orange-500"
-              />
-              <StatCard 
-                label="CORRIDAS" 
-                value={stats.racesFinished} 
-                icon={Trophy} 
-                subValue={`${stats.racesInscribed} INSCRITO`}
-                color="text-emerald-500"
-              />
-           </div>
-
-           {/* Medal Cabinet */}
-           <div className="bg-[#11161D] rounded-[3rem] border border-white/5 p-8 shadow-2xl overflow-hidden relative mb-8">
-              <div className="absolute top-0 right-0 p-8 opacity-5">
-                 <Star className="w-32 h-32 text-amber-500" />
-              </div>
-              <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 mb-8 italic text-center md:text-left">Conquistas & Medalhas</h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                 {medals.map((medal, i) => (
-                   <div key={i} className={cn(
-                     "group relative flex flex-col items-center text-center p-6 rounded-3xl transition-all",
-                     medal.active ? "bg-white/5 border border-white/10" : "opacity-30 grayscale"
-                   )}>
-                      <div className={cn(
-                        "w-16 h-16 rounded-2xl flex items-center justify-center mb-4 transition-transform group-hover:scale-110",
-                        medal.active ? "bg-amber-500/10 text-amber-500" : "bg-slate-900 text-slate-700"
-                      )}>
-                         <medal.icon className="w-8 h-8" />
-                      </div>
-                      <p className="text-[10px] font-black uppercase italic text-white mb-1">{medal.label}</p>
-                      <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest leading-tight">{medal.desc}</p>
-                      
-                      {medal.active && (
-                        <div className="absolute -top-1 -right-1 w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center shadow-lg">
-                          <CheckCircle2 className="w-3 h-3 text-black" />
-                        </div>
-                      )}
-                   </div>
-                 ))}
-              </div>
-           </div>
-
            {/* Tabs Navigation */}
-           <div className="flex bg-[#11161D]/50 p-2 rounded-3xl border border-white/5 backdrop-blur-md">
+           <div className="flex bg-slate-900/50 p-2 rounded-3xl border border-white/5 backdrop-blur-md">
               <button 
                 onClick={() => setActiveTab('treinos')}
                 className={cn(
                   "flex-1 py-4 px-6 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all",
-                  activeTab === 'treinos' ? "bg-[#3B82F6] text-white shadow-xl italic" : "text-slate-500 hover:text-white"
+                  activeTab === 'treinos' ? "bg-yellow-400 text-slate-950 shadow-xl italic" : "text-slate-500 hover:text-white"
                 )}
               >
                 Histórico de Treinos
@@ -320,7 +191,7 @@ const StudentProfile = () => {
                 onClick={() => setActiveTab('consultorias')}
                 className={cn(
                   "flex-1 py-4 px-6 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all",
-                  activeTab === 'consultorias' ? "bg-[#3B82F6] text-white shadow-xl italic" : "text-slate-500 hover:text-white"
+                  activeTab === 'consultorias' ? "bg-yellow-400 text-slate-950 shadow-xl italic" : "text-slate-500 hover:text-white"
                 )}
               >
                 Consultorias
@@ -329,7 +200,7 @@ const StudentProfile = () => {
                 onClick={() => setActiveTab('evolucao')}
                 className={cn(
                   "flex-1 py-4 px-6 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all",
-                  activeTab === 'evolucao' ? "bg-[#3B82F6] text-white shadow-xl italic" : "text-slate-500 hover:text-white"
+                  activeTab === 'evolucao' ? "bg-yellow-400 text-slate-950 shadow-xl italic" : "text-slate-500 hover:text-white"
                 )}
               >
                 Evolução & Bio
@@ -345,50 +216,50 @@ const StudentProfile = () => {
                          <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic">Nenhum treino registrado para este aluno.</p>
                       </div>
                    ) : (
-                      workouts.map(workout => (
-                        <div key={workout.id} className="bg-[#11161D]/40 border border-white/5 rounded-[2.5rem] p-8 hover:border-[#3B82F6]/20 transition-all group">
-                           <div className="flex items-center justify-between mb-6">
-                              <div className={cn(
-                                "px-4 py-1 rounded-full text-[8px] font-black uppercase italic border",
-                                workout.status === 'completed' ? "bg-green-500/10 text-green-500 border-green-500/10" : "bg-[#3B82F6]/10 text-[#3B82F6] border-[#3B82F6]/10"
-                              )}>
-                                 {workout.status === 'completed' ? 'Finalizado' : 'Em Aberto'}
-                              </div>
-                              <span className="text-[10px] font-black text-slate-600 uppercase tracking-tighter italic">
-                                 {formatDate(workout.createdAt?.toDate ? workout.createdAt.toDate() : new Date())}
-                              </span>
-                           </div>
-                           <h4 className="text-xl font-display font-black italic uppercase tracking-wider mb-2">{workout.title}</h4>
-                           <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-6 italic">{workout.division} • {formatGoal(workout.goal)}</p>
-                           
-                           <div className="space-y-3 mb-8">
-                              {workout.exercises.slice(0, 3).map((ex, i) => (
-                                <div key={i} className="flex items-center justify-between py-2 border-b border-white/5">
-                                   <span className="text-xs font-bold text-white uppercase italic">{ex.name}</span>
-                                   <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{ex.series}x{ex.reps}</span>
-                                </div>
-                              ))}
-                              {workout.exercises.length > 3 && (
-                                <p className="text-[9px] font-black text-slate-600 uppercase italic">+{workout.exercises.length - 3} outros exercícios...</p>
-                              )}
-                           </div>
-                           
-                           <div className="flex items-center justify-between mt-auto">
-                              <button className="text-[#3B82F6] text-[10px] font-black uppercase tracking-widest italic hover:underline">Detalhes</button>
-                              <div className="flex flex-wrap gap-2">
-                                 {workout.exercises.some(e => e.videoUrl) && <Video className="w-4 h-4 text-slate-600" />}
-                                 {workout.notes && <FileText className="w-4 h-4 text-slate-600" />}
-                              </div>
-                           </div>
-                        </div>
-                      ))
+                     workouts.map(workout => (
+                       <div key={workout.id} className="bg-slate-900/40 border border-white/5 rounded-[2.5rem] p-8 hover:border-yellow-400/20 transition-all group">
+                          <div className="flex items-center justify-between mb-6">
+                             <div className={cn(
+                               "px-4 py-1 rounded-full text-[8px] font-black uppercase italic border",
+                               workout.status === 'completed' ? "bg-green-500/10 text-green-500 border-green-500/10" : "bg-yellow-400/10 text-yellow-400 border-yellow-400/10"
+                             )}>
+                                {workout.status === 'completed' ? 'Finalizado' : 'Em Aberto'}
+                             </div>
+                             <span className="text-[10px] font-black text-slate-600 uppercase tracking-tighter italic">
+                                {formatDate(workout.createdAt?.toDate ? workout.createdAt.toDate() : new Date())}
+                             </span>
+                          </div>
+                          <h4 className="text-xl font-display font-black italic uppercase tracking-wider mb-2">{workout.title}</h4>
+                          <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-6 italic">{workout.division} • {formatGoal(workout.goal)}</p>
+                          
+                          <div className="space-y-3 mb-8">
+                             {workout.exercises.slice(0, 3).map((ex, i) => (
+                               <div key={i} className="flex items-center justify-between py-2 border-b border-white/5">
+                                  <span className="text-xs font-bold text-white uppercase italic">{ex.name}</span>
+                                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{ex.series}x{ex.reps}</span>
+                               </div>
+                             ))}
+                             {workout.exercises.length > 3 && (
+                               <p className="text-[9px] font-black text-slate-600 uppercase italic">+{workout.exercises.length - 3} outros exercícios...</p>
+                             )}
+                          </div>
+                          
+                          <div className="flex items-center justify-between mt-auto">
+                             <button className="text-yellow-400 text-[10px] font-black uppercase tracking-widest italic hover:underline">Detalhes</button>
+                             <div className="flex flex-wrap gap-2">
+                                {workout.exercises.some(e => e.videoUrl) && <Video className="w-4 h-4 text-slate-600" />}
+                                {workout.notes && <FileText className="w-4 h-4 text-slate-600" />}
+                             </div>
+                          </div>
+                       </div>
+                     ))
                    )}
                 </div>
               )}
 
               {activeTab === 'consultorias' && (
                 <div className="space-y-6">
-                   <div className="flex items-center justify-between bg-[#11161D]/50 p-8 rounded-[2rem] border border-white/5">
+                   <div className="flex items-center justify-between bg-slate-900/50 p-8 rounded-[2rem] border border-white/5">
                       <div>
                          <h3 className="text-xl font-display font-black italic uppercase tracking-wider mb-1">Próxima Sessão</h3>
                          <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic">Nenhum agendamento futuro encontrado.</p>
@@ -406,7 +277,7 @@ const StudentProfile = () => {
                         <div key={consult.id} className="bg-slate-900/30 border border-white/10 p-6 rounded-3xl flex items-center justify-between">
                            <div className="flex items-center gap-6">
                               <div className="w-12 h-12 bg-slate-800 rounded-2xl flex items-center justify-center">
-                                 <Calendar className="w-5 h-5 text-[#3B82F6]" />
+                                 <Calendar className="w-5 h-5 text-yellow-400" />
                               </div>
                               <div>
                                  <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 italic">{consult.date} • {consult.time}</div>
@@ -415,7 +286,7 @@ const StudentProfile = () => {
                            </div>
                            <div className={cn(
                              "px-4 py-1 rounded-full text-[8px] font-black uppercase italic border",
-                             consult.status === 'finished' ? "bg-green-500/10 text-green-500 border-green-500/10" : "bg-[#3B82F6]/10 text-[#3B82F6] border-[#3B82F6]/10"
+                             consult.status === 'finished' ? "bg-green-500/10 text-green-500 border-green-500/10" : "bg-yellow-400/10 text-yellow-400 border-yellow-400/10"
                            )}>
                               {consult.status}
                            </div>
@@ -427,9 +298,9 @@ const StudentProfile = () => {
 
               {activeTab === 'evolucao' && (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                   <div className="bg-[#11161D] border border-white/10 rounded-[3rem] p-10">
+                   <div className="bg-slate-900 border border-white/10 rounded-[3rem] p-10">
                       <div className="flex items-center gap-3 mb-8">
-                         <TrendingUp className="w-6 h-6 text-[#3B82F6]" />
+                         <TrendingUp className="w-6 h-6 text-yellow-400" />
                          <h3 className="text-xl font-display font-black italic uppercase tracking-wider">Anotações do Personal</h3>
                       </div>
                       <textarea 
@@ -438,16 +309,16 @@ const StudentProfile = () => {
                           if (clientId) await updateDoc(doc(db, 'trainer_clients', clientId), { notes: e.target.value });
                         }}
                         placeholder="Escreva observações sobre a postura, limitações ou bio do aluno..."
-                        className="w-full h-80 bg-black/40 border border-white/5 rounded-[2rem] p-8 text-sm leading-relaxed text-slate-300 focus:outline-none focus:border-[#3B82F6] transition-colors resize-none"
+                        className="w-full h-80 bg-black/40 border border-white/5 rounded-[2rem] p-8 text-sm leading-relaxed text-slate-300 focus:outline-none focus:border-yellow-400 transition-colors resize-none"
                       />
                    </div>
                    
                    <div className="space-y-8">
-                      <div className="bg-[#11161D] p-8 rounded-[3.1rem] border border-white/5">
+                      <div className="bg-slate-900 p-8 rounded-[3.1rem] border border-white/5">
                          <h3 className="text-[11px] font-black uppercase tracking-widest italic text-slate-500 mb-6">Planos Vinculados</h3>
                          <div className="flex items-center justify-between bg-black/40 p-6 rounded-3xl border border-white/5">
                             <div className="flex items-center gap-4">
-                               <div className="w-10 h-10 bg-[#3B82F6] rounded-2xl flex items-center justify-center">
+                               <div className="w-10 h-10 bg-yellow-400 rounded-2xl flex items-center justify-center">
                                   <BadgeAlert className="w-5 h-5 text-white" />
                                </div>
                                <div>
@@ -455,11 +326,11 @@ const StudentProfile = () => {
                                   <div className="text-[9px] font-bold text-slate-500 uppercase">Validade: Indeterminada</div>
                                </div>
                             </div>
-                            <span className="text-xl font-display font-black italic text-[#3B82F6]">R$ 150</span>
+                            <span className="text-xl font-display font-black italic text-yellow-400">R$ 150</span>
                          </div>
                       </div>
                       
-                      <div className="bg-gradient-to-br from-[#3B82F6]/20 to-transparent p-10 rounded-[4rem] border border-[#3B82F6]/10">
+                      <div className="bg-gradient-to-br from-yellow-400/20 to-transparent p-10 rounded-[4rem] border border-yellow-400/10">
                          <h3 className="text-[11px] font-black uppercase tracking-widest italic text-white mb-4">Meta do Atleta</h3>
                          <p className="text-3xl font-display font-black italic uppercase tracking-tighter text-white leading-tight">
                             " {formatGoal(client.goal) || 'Transformar e superar limites.'} "
@@ -481,13 +352,13 @@ const StudentProfile = () => {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowScheduleModal(false)}
-              className="absolute inset-0 bg-[#05070A]/80 backdrop-blur-sm"
+              className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm"
             />
             <motion.div 
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-[#11161D] border border-white/10 rounded-[3rem] p-10 w-full max-w-lg relative z-10 shadow-2xl"
+              className="bg-slate-900 border border-white/10 rounded-[3rem] p-10 w-full max-w-lg relative z-10 shadow-2xl"
             >
               <div className="flex items-center justify-between mb-8">
                  <h2 className="text-3xl font-display font-black italic uppercase tracking-tighter">Agendar Consultoria</h2>
@@ -505,7 +376,7 @@ const StudentProfile = () => {
                          type="date"
                          value={newConsult.date}
                          onChange={e => setNewConsult({...newConsult, date: e.target.value})}
-                         className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-sm font-medium focus:outline-none focus:border-[#3B82F6] transition-colors"
+                         className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-sm font-medium focus:outline-none focus:border-yellow-400 transition-colors"
                        />
                     </div>
                     <div className="space-y-2">
@@ -515,7 +386,7 @@ const StudentProfile = () => {
                          type="time"
                          value={newConsult.time}
                          onChange={e => setNewConsult({...newConsult, time: e.target.value})}
-                         className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-sm font-medium focus:outline-none focus:border-[#3B82F6] transition-colors"
+                         className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-sm font-medium focus:outline-none focus:border-yellow-400 transition-colors"
                        />
                     </div>
                  </div>
@@ -528,7 +399,7 @@ const StudentProfile = () => {
                          onClick={() => setNewConsult({...newConsult, type: 'online'})}
                          className={cn(
                            "flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all",
-                           newConsult.type === 'online' ? "bg-[#3B82F6] text-white shadow-lg" : "text-slate-500 hover:text-slate-400"
+                           newConsult.type === 'online' ? "bg-yellow-400 text-slate-950 shadow-lg" : "text-slate-500 hover:text-slate-400"
                          )}
                        >
                           Online (Meet/Zoom)
@@ -538,7 +409,7 @@ const StudentProfile = () => {
                          onClick={() => setNewConsult({...newConsult, type: 'presencial'})}
                          className={cn(
                            "flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all",
-                           newConsult.type === 'presencial' ? "bg-[#3B82F6] text-white shadow-lg" : "text-slate-500 hover:text-slate-400"
+                           newConsult.type === 'presencial' ? "bg-yellow-400 text-slate-950 shadow-lg" : "text-slate-500 hover:text-slate-400"
                          )}
                        >
                           Presencial
@@ -552,13 +423,13 @@ const StudentProfile = () => {
                       value={newConsult.notes}
                       onChange={e => setNewConsult({...newConsult, notes: e.target.value})}
                       placeholder="Link da reunião ou local do encontro..."
-                      className="w-full h-32 bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-sm font-medium focus:outline-none focus:border-[#3B82F6] transition-colors resize-none"
+                      className="w-full h-32 bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-sm font-medium focus:outline-none focus:border-yellow-400 transition-colors resize-none"
                     />
                  </div>
 
                  <button 
                    type="submit"
-                   className="w-full bg-[#3B82F6] text-white py-5 rounded-2xl font-black italic uppercase tracking-[0.2em] text-xs shadow-[0_20px_40px_-15px_rgba(59,130,246,0.4)] hover:bg-blue-500 transition-all active:scale-95"
+                   className="w-full bg-yellow-400 text-slate-950 py-5 rounded-2xl font-black italic uppercase tracking-[0.2em] text-xs shadow-[0_20px_40px_-15px_rgba(250,204,21,0.4)] hover:bg-yellow-300 transition-all active:scale-95"
                  >
                     Confirmar Agendamento
                  </button>

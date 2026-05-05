@@ -96,9 +96,11 @@ service cloud.firestore {
           && data.createdAt is string;
       }
 
-      // Allow public to list registrations for a race (for participants list)
-      // Note: This exposes PII (email, etc.) to the client if not handled carefully
-      allow list: if true;
+      // Organizers can list registrations for their races, runners can list their own by email
+      allow list: if isSignedIn() && (
+        resource.data.organizerId == request.auth.uid ||
+        resource.data.email == request.auth.token.email
+      );
 
       // Public can create a registration
       allow create: if isValidRegistration(incoming()) 
@@ -107,20 +109,18 @@ service cloud.firestore {
       // Strictly isolate PII: only owner (by email) or organizer can read full details
       allow get: if isSignedIn() && (
         resource.data.organizerId == request.auth.uid ||
-        resource.data.email == request.auth.token.email ||
-        isAdmin()
+        resource.data.email == request.auth.token.email
       );
 
       // Organizers can update limited fields
       allow update: if isSignedIn() 
-        && (resource.data.organizerId == request.auth.uid || isAdmin())
+        && resource.data.organizerId == request.auth.uid
         && incoming().diff(existing()).affectedKeys().hasOnly(['paymentStatus', 'paymentMethod']);
         
       // Organizers can delete registrations for their races
       allow delete: if isSignedIn() && (
         resource.data.organizerId == request.auth.uid || 
-        get(/databases/$(database)/documents/races/$(resource.data.raceId)).data.organizerId == request.auth.uid ||
-        isAdmin()
+        get(/databases/$(database)/documents/races/$(resource.data.raceId)).data.organizerId == request.auth.uid
       );
     }
 
@@ -162,9 +162,9 @@ service cloud.firestore {
           && data.status in ['active', 'paused', 'encerrado'];
       }
 
-      allow read: if isSignedIn() && (isOwner(resource.data.trainerId) || resource.data.email == request.auth.token.email || isAdmin());
+      allow read: if isSignedIn() && (isOwner(resource.data.trainerId) || resource.data.email == request.auth.token.email);
       allow create: if isSignedIn() && isOwner(incoming().trainerId) && isValidTrainerClient(incoming());
-      allow update: if isSignedIn() && (isOwner(resource.data.trainerId) || isAdmin()) && isValidTrainerClient(incoming());
+      allow update: if isSignedIn() && isOwner(resource.data.trainerId) && isValidTrainerClient(incoming());
     }
 
     // --- Workouts ---
@@ -177,26 +177,21 @@ service cloud.firestore {
 
       allow read: if isSignedIn() && (
         isOwner(resource.data.trainerId) || 
-        resource.data.clientEmail == request.auth.token.email ||
-        isAdmin() ||
-        // Fallback for missing clientEmail
         get(/databases/$(database)/documents/trainer_clients/$(resource.data.clientId)).data.email == request.auth.token.email
       );
       allow create: if isSignedIn() && isOwner(incoming().trainerId) && isValidWorkout(incoming());
       allow update: if isSignedIn() && (
         isOwner(resource.data.trainerId) || 
-        resource.data.clientEmail == request.auth.token.email ||
-        isAdmin() ||
         get(/databases/$(database)/documents/trainer_clients/$(resource.data.clientId)).data.email == request.auth.token.email
       );
     }
 
     // --- Training Executions ---
     match /training_executions/{executionId} {
-      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin()) && request.resource.data.userId == request.auth.uid;
-      allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
 
     // --- Consultations ---
@@ -209,12 +204,10 @@ service cloud.firestore {
 
       allow read: if isSignedIn() && (
         isOwner(resource.data.trainerId) || 
-        resource.data.clientEmail == request.auth.token.email ||
-        isAdmin() ||
         get(/databases/$(database)/documents/trainer_clients/$(resource.data.clientId)).data.email == request.auth.token.email
       );
       allow create: if isSignedIn() && isOwner(incoming().trainerId);
-      allow update: if isSignedIn() && (isOwner(resource.data.trainerId) || isAdmin());
+      allow update: if isSignedIn() && isOwner(resource.data.trainerId);
     }
   }
 }

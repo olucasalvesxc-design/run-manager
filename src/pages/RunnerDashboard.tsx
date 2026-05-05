@@ -293,119 +293,83 @@ const RunnerDashboard = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="w-8 h-8 border-4 border-[#3B82F6] border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-10 pb-20 bg-slate-50 min-m-[-2rem] p-4 sm:p-8">
-      {/* Header and Access Level */}
-      <header className="mb-12">
-         <div className="flex items-center gap-3 text-blue-500 mb-4">
-            <span className="text-[10px] font-black uppercase tracking-[0.4em] italic">NIVEL DE ACESSO: MASTER</span>
-         </div>
-         <h1 className="flex flex-col leading-none">
-           <span className="text-4xl sm:text-6xl font-display font-black italic uppercase tracking-tighter text-slate-200">Runner</span>
-           <span className="text-5xl sm:text-7xl font-display font-black italic uppercase tracking-tighter text-slate-900 -mt-2">Dashboard</span>
-         </h1>
-      </header>
-
+    <div className="space-y-10 pb-20">
       {/* Weekly Progress Bar */}
-      <div className="bg-[#11161D] border border-white/5 rounded-[2.5rem] p-4 sm:p-10 shadow-2xl relative overflow-hidden group">
+      <div className="bg-slate-900 border border-white/5 rounded-3xl p-4 sm:p-6 shadow-xl relative overflow-hidden group">
+        <div className="absolute top-0 right-0 w-32 h-full bg-red-500/5 blur-3xl group-hover:bg-red-500/10 transition-all"></div>
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6 relative z-10 text-center md:text-left">
           <div className="flex items-center justify-center md:justify-start gap-3 sm:gap-4">
-            <div className="w-12 h-12 sm:w-16 sm:h-16 bg-black rounded-2xl flex items-center justify-center shadow-lg">
-              <TrendingUp className="w-6 h-6 sm:w-8 sm:h-8 text-[#3B82F6]" />
+            <div className="w-12 h-12 sm:w-14 sm:h-14 bg-red-500 rounded-2xl flex items-center justify-center shadow-lg shadow-red-500/20">
+              <TrendingUp className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
             </div>
             <div>
               <p className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-slate-500 italic text-left">Progresso Semanal</p>
-              <h3 className="text-xl sm:text-3xl font-display font-black text-white uppercase italic tracking-tighter text-left">
-                {weeklyStats.completed} de {weeklyStats.goal} <span className="text-[#3B82F6]">Sessões</span>
+              <h3 className="text-xl sm:text-2xl font-display font-black text-white uppercase italic tracking-tighter text-left">
+                {weeklyStats.completed} de {weeklyStats.goal} <span className="text-red-500">Treinos</span>
               </h3>
             </div>
           </div>
           <div className="flex-1 max-w-md w-full px-2 sm:px-0">
-            <div className="h-2 sm:h-3 bg-black rounded-full overflow-hidden">
+            <div className="h-4 sm:h-6 bg-slate-950 rounded-full border border-white/5 p-1 relative">
               <motion.div 
                 initial={{ width: 0 }}
                 animate={{ width: `${(weeklyStats.completed / weeklyStats.goal) * 100}%` }}
-                className="h-full bg-[#3B82F6] rounded-full shadow-[0_0_15px_rgba(59,130,246,0.3)]"
-              />
+                className="h-full bg-gradient-to-r from-red-600 to-red-400 rounded-full shadow-[0_0_15px_rgba(239,68,68,0.3)] relative"
+              >
+                <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(255,255,255,0.1)_50%,transparent_75%)] bg-[length:20px_20px] animate-[progress-scan_1s_linear_infinite]" />
+              </motion.div>
             </div>
           </div>
           <div className="text-center md:text-right">
-            <div className={`text-2xl font-display font-black italic uppercase tracking-tighter ${weeklyStats.completed >= weeklyStats.goal ? 'text-[#3B82F6]' : 'text-slate-600'}`}>
+            <div className={`text-xl font-display font-black italic uppercase tracking-tighter ${weeklyStats.completed >= weeklyStats.goal ? 'text-green-400' : 'text-slate-400'}`}>
               {Math.min(100, Math.round((weeklyStats.completed / weeklyStats.goal) * 100))}%
             </div>
-            <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Master Score</p>
+            <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Meta de Constância</p>
           </div>
         </div>
       </div>
 
-      {/* Stats Grid - Mirroring the Image La      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
-        <div className="bg-[#11161D] p-6 sm:p-10 rounded-[2.5rem] relative overflow-hidden group border border-white/5">
-           <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-10 italic">Total Atividades</h3>
-           <div className="flex items-end justify-between">
-              <p className="text-5xl sm:text-7xl font-display font-black text-white italic">{workouts.length}</p>
-              <span className="bg-emerald-400/20 text-emerald-500 px-3 py-1 rounded-full text-[10px] font-black italic">+12%</span>
-           </div>
-        </div>
+      {/* Monthly Evolution Chart */}
+      <div className="bg-slate-900 border border-white/5 rounded-[2rem] sm:rounded-[2.5rem] p-4 sm:p-8 shadow-2xl relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-yellow-400/5 blur-[100px] rounded-full -translate-y-1/2 translate-x-1/2" />
         
-        <div className="bg-[#3B82F6] p-6 sm:p-10 rounded-[2.5rem] relative overflow-hidden group shadow-[0_20px_40px_rgba(59,130,246,0.3)]">
-           <h3 className="text-[10px] font-black text-white uppercase tracking-widest mb-10 italic">Explosão</h3>
-           <div className="flex items-end justify-between">
-              <p className="text-5xl sm:text-7xl font-display font-black text-white italic">{weeklyStats.completed}</p>
-              <span className="bg-white/10 text-white px-3 py-1 rounded-full text-[10px] font-black italic">+5%</span>
-           </div>
-        </div>
- 
-        <div className="bg-[#11161D] p-6 sm:p-10 rounded-[2.5rem] relative overflow-hidden group border border-white/5">
-           <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-10 italic">Corridas</h3>
-           <div className="flex items-end justify-between">
-              <p className="text-5xl sm:text-7xl font-display font-black text-white italic">{registrations.length}</p>
-              <span className="bg-rose-400/20 text-rose-500 px-3 py-1 rounded-full text-[10px] font-black italic">-2%</span>
-           </div>
-        </div>
- 
-        <div className="bg-[#11161D] p-6 sm:p-10 rounded-[2.5rem] relative overflow-hidden group border border-white/5">
-           <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-10 italic flex items-center gap-2">
-             Status <div className="w-2 h-2 bg-[#3B82F6] rounded-full animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.4)]" /> <span className="text-[#3B82F6]">Live Sync</span>
-           </h3>
-           <div className="flex items-end justify-between mt-10">
-              <p className="text-3xl sm:text-4xl font-display font-black text-white italic">Pronto</p>
-           </div>
-        </div>
-      </div>    </div>
-
-      {/* Monthly Evolution       <div className="bg-[#11161D] border border-white/5 rounded-[2.5rem] sm:rounded-[3rem] p-6 sm:p-10 shadow-2xl relative overflow-hidden">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6 mb-8 sm:mb-10 relative z-10">
           <div>
-            <div className="flex items-center gap-3 text-[#3B82F6] mb-2">
-              <BarChart2 className="w-5 h-5" />
-              <span className="text-[10px] font-black uppercase tracking-[0.4em] italic">Monitor de Crescimento</span>
+            <div className="flex items-center gap-3 text-yellow-400 mb-2">
+              <BarChart2 className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-[0.3em] italic">Desempenho Histórico</span>
             </div>
-            <h2 className="text-3xl sm:text-4xl font-display font-black italic uppercase tracking-tighter text-white leading-none">
-              Expansão da Rede de <span className="text-[#3B82F6]">Profissionais.</span>
+            <h2 className="text-2xl sm:text-3xl font-display font-black italic uppercase tracking-tighter text-white">
+              Evolução <span className="text-yellow-400">Mensal.</span>
             </h2>
           </div>
-          <div className="flex items-center gap-4 text-[10px] font-black uppercase tracking-widest text-slate-500 italic bg-black/20 px-6 py-4 rounded-2xl border border-white/5 overflow-x-auto">
-            <div className="flex items-center gap-2 shrink-0 text-[#3B82F6]">
-              <div className="w-2 h-2 bg-[#3B82F6] rounded-full shadow-[0_0_8px_#3B82F6]" />
+          <div className="flex items-center gap-3 sm:gap-4 text-[7px] sm:text-[10px] font-black uppercase tracking-widest text-slate-500 italic bg-black/20 px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl border border-white/5 overflow-x-auto">
+            <div className="flex items-center gap-2 shrink-0">
+              <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-yellow-400 rounded-full" />
               <span>Corrida</span>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              <div className="w-2 h-2 bg-slate-700 rounded-full" />
-              <span>Elite Alpha</span>
+              <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-red-500 rounded-full" />
+              <span>Musculação</span>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-blue-500 rounded-full" />
+              <span>Funcional</span>
             </div>
           </div>
         </div>
- 
+
         <div className="h-[250px] sm:h-[300px] w-full relative z-10">
           {monthlyHistory.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={monthlyHistory} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" vertical={false} />
                 <XAxis 
                   dataKey="date" 
                   stroke="#475569" 
@@ -423,70 +387,66 @@ const RunnerDashboard = () => {
                   axisLine={false}
                 />
                 <Tooltip 
-                  cursor={{ fill: '#ffffff08' }}
+                  cursor={{ fill: 'rgba(255,255,255,0.03)' }}
                   contentStyle={{ 
-                    backgroundColor: '#11161D', 
-                    border: '1px solid #ffffff10',
+                    backgroundColor: '#0f172a', 
+                    border: '1px solid rgba(255,255,255,0.05)',
                     borderRadius: '1.5rem',
                     padding: '1rem',
-                    boxShadow: '0 10px 15px -3px rgba(0,0,0,0.3)'
+                    boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)'
                   }}
                   itemStyle={{ 
                     fontSize: '10px', 
                     fontWeight: 900, 
                     textTransform: 'uppercase',
-                    letterSpacing: '0.1em',
-                    color: '#ffffff'
+                    letterSpacing: '0.1em'
                   }}
                   labelStyle={{
-                    color: '#3B82F6',
+                    color: '#94a3b8',
                     marginBottom: '0.5rem',
                     fontSize: '9px',
                     fontWeight: 900,
                     textTransform: 'uppercase'
                   }}
                 />
-                <Bar dataKey="Corrida" stackId="a" fill="#3B82F6" radius={[0, 0, 0, 0]} barSize={32} />
-                <Bar dataKey="Musculação" stackId="a" fill="#334155" radius={[0, 0, 0, 0]} barSize={32} />
-                <Bar dataKey="Funcional" stackId="a" fill="#475569" radius={[4, 4, 0, 0]} barSize={32} />
+                <Bar dataKey="Corrida" stackId="a" fill="#facc15" radius={[0, 0, 0, 0]} barSize={32} />
+                <Bar dataKey="Musculação" stackId="a" fill="#ef4444" radius={[0, 0, 0, 0]} barSize={32} />
+                <Bar dataKey="Funcional" stackId="a" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={32} />
               </BarChart>
             </ResponsiveContainer>
           ) : (
             <div className="h-full flex flex-col items-center justify-center text-center">
-              <div className="w-16 h-16 bg-black/40 rounded-full flex items-center justify-center mb-4 border border-white/5">
+              <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mb-4">
                 <BarChart2 className="w-8 h-8 text-slate-700" />
               </div>
-              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic">
+              <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest italic">
                 Aguardando primeiros treinos <br/> concluídos para gerar insights.
               </p>
             </div>
           )}
         </div>
-      </div>>
       </div>
 
-      <div className="relative overflow-hidden bg-[#11161D] border border-white/5 p-6 sm:p-12 rounded-[3rem] shadow-2xl flex flex-col md:flex-row md:items-center justify-between gap-8 text-white">
-        <div className="relative z-10 w-full md:w-2/3">
-          <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.4em] text-[#3B82F6] mb-4 italic">
-            <div className="w-2 h-2 bg-[#3B82F6] rounded-full animate-pulse shadow-[0_0_8px_#3B82F6]"></div>
-            Elite Athlete Portal
+      <div className="relative overflow-hidden bg-slate-950 border border-slate-800 p-6 sm:p-8 md:p-12 rounded-[2.5rem] sm:rounded-[3rem] shadow-2xl flex flex-col md:flex-row md:items-center justify-between gap-8">
+        <div className="relative z-10">
+          <div className="flex items-center gap-2 text-[8px] sm:text-[10px] font-black uppercase tracking-[0.3em] text-yellow-400 mb-3 sm:mb-4 italic">
+            <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></div>
+            Painel do Atleta
           </div>
-          <h1 className="text-4xl sm:text-6xl font-display font-black text-white italic uppercase tracking-tighter mb-4 leading-none">
-            Foco no <span className="text-[#3B82F6]">Objetivo.</span>
+          <h1 className="text-3xl sm:text-4xl lg:text-6xl font-display font-black text-white italic uppercase tracking-tighter mb-2 leading-tight">
+            Foco no <span className="text-yellow-400">Objetivo.</span>
           </h1>
-          <p className="text-sm sm:text-base text-slate-400 font-medium italic mb-8 max-w-xl">
-            Sua jornada master começa aqui. Acompanhe cada quilômetro e cada repetição com precisão cirúrgica.
-          </p>
+          <p className="text-sm sm:text-base text-slate-500 font-medium italic">Acompanhe seus treinos, corridas e evolua cada dia mais.</p>
           
           {profile?.athleteCode && (
-            <div className="inline-flex flex-col sm:flex-row items-center gap-4 bg-black/40 border border-white/5 p-4 sm:p-6 rounded-3xl w-full sm:w-auto shadow-inner">
-               <div className="shrink-0 flex items-center gap-4 w-full sm:w-auto">
-                  <div className="w-12 h-12 bg-[#11161D] border border-white/10 rounded-2xl flex items-center justify-center shadow-sm">
-                     <Target className="w-6 h-6 text-[#3B82F6]" />
+            <div className="mt-6 sm:mt-8 inline-flex flex-col sm:flex-row items-center gap-4 bg-white/5 border border-white/10 p-4 sm:p-5 rounded-2xl sm:rounded-3xl backdrop-blur-xl w-full sm:w-auto">
+               <div className="shrink-0 flex items-center gap-3 w-full sm:w-auto">
+                  <div className="w-10 h-10 bg-yellow-400/10 rounded-xl flex items-center justify-center">
+                     <Target className="w-5 h-5 text-yellow-400" />
                   </div>
                   <div>
-                    <span className="block text-[8px] font-black text-slate-500 uppercase tracking-widest italic">ID DE ATLETA</span>
-                    <span className="text-xl sm:text-2xl font-display font-black text-white tracking-widest italic uppercase">{profile.athleteCode}</span>
+                    <span className="block text-[8px] font-black text-slate-500 uppercase tracking-widest italic">Seu Código de Atleta</span>
+                    <span className="text-lg sm:text-xl font-display font-black text-white tracking-widest italic uppercase">{profile.athleteCode}</span>
                   </div>
                </div>
                <button 
@@ -496,51 +456,54 @@ const RunnerDashboard = () => {
                   setTimeout(() => setCopied(false), 2000);
                 }}
                 className={cn(
-                  "w-full sm:w-auto px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-lg",
-                  copied ? "bg-emerald-500 text-white shadow-emerald-500/20" : "bg-[#3B82F6] text-white hover:bg-blue-400 shadow-blue-500/20"
+                  "w-full sm:w-auto px-6 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all",
+                  copied ? "bg-green-500 text-white" : "bg-yellow-400 text-slate-950 hover:bg-yellow-500 shadow-lg shadow-yellow-400/20"
                 )}
                >
-                 {copied ? <CheckCircle2 className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-                 {copied ? 'Copiado!' : 'Copiar Registro'}
+                 {copied ? <Clock className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
+                 {copied ? 'Copiado!' : 'Copiar Código'}
                </button>
             </div>
           )}
         </div>
+        <div className="absolute top-0 right-0 w-1/3 h-full opacity-5 pointer-events-none">
+           <Zap className="w-full h-full text-white fill-current translate-x-1/4 scale-150 rotate-12" />
+        </div>
       </div>
 
       {/* Tabs Navigation */}
-      <div className="flex bg-[#11161D]/80 p-2 rounded-[2.5rem] border border-white/5 backdrop-blur-md sticky top-4 z-40 mx-4 sm:mx-0 shadow-2xl">
+      <div className="flex bg-slate-900/50 p-1.5 sm:p-2 rounded-2xl sm:rounded-[2.5rem] border border-white/5 backdrop-blur-md sticky top-20 sm:top-4 z-40 mx-4 sm:mx-0">
         <button 
           onClick={() => setActiveTab('treinos')}
           className={cn(
-            "flex-1 py-4 px-6 rounded-3xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-3",
-            activeTab === 'treinos' ? "bg-[#3B82F6] text-white shadow-xl italic" : "text-slate-500 hover:text-slate-300"
+            "flex-1 py-3 sm:py-4 px-2 sm:px-6 rounded-xl sm:rounded-3xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 sm:gap-3",
+            activeTab === 'treinos' ? "bg-yellow-400 text-slate-950 shadow-xl italic" : "text-slate-500 hover:text-white"
           )}
         >
-          <Dumbbell className="w-4 h-4" />
-          <span className="hidden sm:inline">Treinos Master</span>
+          <Dumbbell className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+          <span className="hidden sm:inline">Meus Treinos</span>
           <span className="sm:hidden">Treinos</span>
         </button>
         <button 
           onClick={() => setActiveTab('consultorias')}
           className={cn(
-            "flex-1 py-4 px-6 rounded-3xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-3",
-            activeTab === 'consultorias' ? "bg-[#3B82F6] text-white shadow-xl italic" : "text-slate-500 hover:text-slate-300"
+            "flex-1 py-3 sm:py-4 px-2 sm:px-6 rounded-xl sm:rounded-3xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 sm:gap-3",
+            activeTab === 'consultorias' ? "bg-yellow-400 text-slate-950 shadow-xl italic" : "text-slate-500 hover:text-white"
           )}
         >
-          <Calendar className="w-4 h-4" />
-          <span className="hidden sm:inline">Consultorias Elite</span>
+          <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+          <span className="hidden sm:inline">Consultorias</span>
           <span className="sm:hidden">Sessões</span>
         </button>
         <button 
           onClick={() => setActiveTab('corridas')}
           className={cn(
-            "flex-1 py-4 px-6 rounded-3xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-3",
-            activeTab === 'corridas' ? "bg-[#3B82F6] text-white shadow-xl italic" : "text-slate-500 hover:text-slate-300"
+            "flex-1 py-3 sm:py-4 px-2 sm:px-6 rounded-xl sm:rounded-3xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 sm:gap-3",
+            activeTab === 'corridas' ? "bg-yellow-400 text-slate-950 shadow-xl italic" : "text-slate-500 hover:text-white"
           )}
         >
-          <Zap className="w-4 h-4" />
-          <span className="hidden sm:inline">Próximos Eventos</span>
+          <Zap className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+          <span className="hidden sm:inline">Minhas Corridas</span>
           <span className="sm:hidden">Corridas</span>
         </button>
       </div>
@@ -556,59 +519,65 @@ const RunnerDashboard = () => {
           )}
         </AnimatePresence>
         {activeTab === 'treinos' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
              {workouts.length === 0 ? (
-                <div className="md:col-span-2 py-32 text-center border border-white/5 rounded-[3rem] bg-[#11161D] shadow-2xl">
-                   <Dumbbell className="w-16 h-16 text-slate-800 mx-auto mb-6" />
-                   <h3 className="text-xl font-display font-black text-slate-600 uppercase italic">Nenhum treino prescrito</h3>
-                   <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-2 italic">Seu treinador master enviará sua planilha em breve.</p>
+                <div className="md:col-span-2 py-20 sm:py-32 text-center border-2 border-dashed border-white/5 rounded-[2.5rem] sm:rounded-[4rem] bg-slate-900/20 px-6">
+                   <Dumbbell className="w-12 h-12 sm:w-16 sm:h-16 text-slate-800 mx-auto mb-6" />
+                   <h3 className="text-lg sm:text-xl font-display font-black text-slate-400 uppercase italic">Nenhum treino prescrito</h3>
+                   <p className="text-[10px] sm:text-xs text-slate-600 font-bold uppercase tracking-widest mt-2 italic">Aguarde seu treinador enviar sua primeira planilha.</p>
                 </div>
              ) : (
-                workouts.map(workout => (
-                  <motion.div 
-                    layout
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    key={workout.id} 
-                    className="bg-[#11161D] border border-white/5 rounded-[3rem] p-8 hover:border-[#3B82F6]/50 transition-all group relative overflow-hidden flex flex-col min-h-[450px] shadow-2xl"
-                  >
-                    <div className="flex items-center justify-between mb-8">
+               workouts.map(workout => (
+                 <motion.div 
+                   layout
+                   initial={{ opacity: 0, y: 20 }}
+                   animate={{ opacity: 1, y: 0 }}
+                   key={workout.id} 
+                   className="bg-slate-900 border border-white/5 rounded-[2rem] sm:rounded-[3rem] p-6 sm:p-8 hover:border-red-500/20 transition-all group relative overflow-hidden flex flex-col min-h-[400px] sm:min-h-[450px]"
+                 >
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-red-500 opacity-[0.05] rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+                    
+                    <div className="flex items-center justify-between mb-6 sm:mb-8">
                        <div className={cn(
-                         "px-4 py-1.5 rounded-full text-[8px] font-black uppercase italic border shadow-sm",
-                         workout.status === 'completed' ? "bg-emerald-400/10 text-emerald-500 border-emerald-500/10" : "bg-blue-500/10 text-[#3B82F6] border-blue-500/10"
+                         "px-4 py-1.5 rounded-full text-[8px] font-black uppercase italic border shadow-lg",
+                         workout.status === 'completed' ? "bg-green-500/10 text-green-500 border-green-500/20" : "bg-red-500/10 text-red-500 border-red-500/20"
                        )}>
-                          {workout.status === 'completed' ? 'Missão Concluída' : 'Em Aberto'}
+                          {workout.status === 'completed' ? (
+                            <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Missão Cumprida</span>
+                          ) : 'Próximo Desafio'}
                        </div>
                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-tighter italic flex items-center gap-2">
                           <Clock className="w-3 h-3" />
                           {workout.createdAt?.toDate ? formatDate(workout.createdAt.toDate()) : 'Recent'}
                        </span>
                     </div>
- 
-                    <h4 className="text-3xl font-display font-black italic uppercase tracking-wider mb-2 text-white group-hover:text-[#3B82F6] transition-colors uppercase leading-none">{workout.title}</h4>
-                    <div className="flex items-center gap-4 text-[10px] font-black text-slate-500 uppercase tracking-widest mb-8 italic">
+
+                    <h4 className="text-2xl font-display font-black italic uppercase tracking-wider mb-2 group-hover:text-red-500 transition-colors">{workout.title}</h4>
+                    <div className="flex items-center gap-4 text-[10px] font-black text-slate-500 uppercase tracking-widest mb-6 italic">
                        <span>{workout.division}</span>
-                       <span className="w-1 h-1 bg-slate-800 rounded-full" />
+                       <span className="w-1 h-1 bg-slate-700 rounded-full" />
                        <span>{formatGoal(workout.goal)}</span>
                     </div>
- 
-                    <div className="mb-8 relative h-44 rounded-3xl overflow-hidden border border-white/5 bg-black/40 group-hover:border-blue-500/20 transition-all flex flex-col shadow-inner">
-                       <div className="flex-1 opacity-40 group-hover:opacity-80 transition-opacity">
+
+                    {/* Animated Graph Illustration */}
+                    <div className="mb-6 relative h-40 rounded-[2rem] overflow-hidden border border-white/5 bg-slate-950 group-hover:border-red-500/20 transition-all shadow-inner flex flex-col">
+                       <div className="flex-1 opacity-60 group-hover:opacity-100 transition-opacity">
                           <WorkoutGraph type={workout.title} intensity="medium" />
                        </div>
+                       <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent opacity-60 z-20"></div>
                     </div>
                     
                     <div className="space-y-4 mb-10 flex-1">
                        {workout.exercises.slice(0, 2).map((ex, i) => (
                          <div key={i} className="bg-black/20 p-4 rounded-2xl border border-white/5 flex items-center justify-between hover:bg-black/40 transition-colors">
-                             <div className="flex flex-col">
-                                <span className="text-white px-2 py-0.5 rounded-lg mb-1 font-bold">{ex.name}</span>
-                                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest pl-2">{ex.series} Séries • {ex.reps} Reps</span>
-                             </div>
+                            <div className="flex flex-col">
+                               <span className="text-[11px] font-black text-white px-2 py-0.5 rounded-lg mb-1">{ex.name}</span>
+                               <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest pl-2">{ex.series} Séries • {ex.reps} Reps</span>
+                            </div>
                          </div>
                        ))}
                        {workout.exercises.length > 2 && (
-                         <div className="text-[8px] font-black text-slate-500 uppercase tracking-widest text-center italic mt-4">+ {workout.exercises.length - 2} exercícios neste bloco</div>
+                         <div className="text-[8px] font-black text-slate-600 uppercase tracking-widest text-center italic">+ {workout.exercises.length - 2} exercícios neste treino</div>
                        )}
                     </div>
                     
@@ -616,118 +585,125 @@ const RunnerDashboard = () => {
                        {workout.status !== 'completed' ? (
                          <button 
                           onClick={() => handleStartWorkout(workout)}
-                          className="flex-1 bg-[#3B82F6] text-white font-display font-black uppercase italic tracking-[0.2em] py-5 rounded-2xl shadow-lg shadow-blue-500/20 hover:bg-blue-400 active:scale-95 transition-all text-xs flex items-center justify-center gap-3"
+                          className="flex-1 bg-red-600 text-white font-display font-black uppercase italic tracking-[0.2em] py-4 rounded-2xl shadow-xl shadow-red-600/20 hover:bg-red-500 active:scale-95 transition-all text-xs flex items-center justify-center gap-3"
                          >
-                             <Play className="w-4 h-4 fill-current" />
-                             Acionar Protocolo
+                            <Play className="w-4 h-4 fill-current" />
+                            Iniciar Treino
                          </button>
                        ) : (
-                         <div className="flex-1 text-center py-5 bg-emerald-400/10 rounded-2xl border border-emerald-400/20">
-                            <span className="text-[10px] font-black uppercase text-emerald-500 italic tracking-widest">Protocolo Finalizado</span>
+                         <div className="flex-1 text-center py-4 bg-green-500/10 rounded-2xl border border-green-500/20">
+                            <span className="text-[10px] font-black uppercase text-green-500 italic tracking-widest">Treino Finalizado</span>
                          </div>
                        )}
                     </div>
-                  </motion.div>
-                ))
+                 </motion.div>
+               ))
              )}
           </div>
         )}
+
         {activeTab === 'consultorias' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-             <div className="bg-[#11161D] border border-white/5 rounded-[3rem] p-12 flex flex-col items-center justify-center text-center space-y-8 shadow-2xl">
-                <div className="w-20 h-20 bg-black/40 border border-white/5 rounded-3xl flex items-center justify-center shadow-inner">
-                   <Calendar className="w-10 h-10 text-[#3B82F6]" />
+          <div className="space-y-8">
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="bg-slate-900 border border-white/10 rounded-[3rem] p-10 flex flex-col items-center justify-center text-center space-y-6">
+                   <div className="w-20 h-20 bg-yellow-400/10 rounded-[2rem] flex items-center justify-center">
+                      <Calendar className="w-10 h-10 text-yellow-400" />
+                   </div>
+                   <div>
+                      <h3 className="text-2xl font-display font-black italic uppercase tracking-wider mb-2">Sessão Individual</h3>
+                      <p className="text-xs text-slate-500 font-medium italic leading-relaxed">
+                         Agende um horário exclusivo com seu treinador para avaliação física, técnica ou planejameto.
+                      </p>
+                   </div>
+                   <button className="w-full bg-yellow-400 text-slate-950 py-4 rounded-2xl font-black italic uppercase tracking-widest text-xs shadow-xl active:scale-95 transition-all hover:bg-yellow-300">
+                      Solicitar Agendamento
+                   </button>
                 </div>
-                <div>
-                   <h3 className="text-3xl font-display font-black italic uppercase tracking-wider mb-4 text-white">Agenda Elite</h3>
-                   <p className="text-sm text-slate-400 font-medium italic leading-relaxed max-w-sm">
-                      Solicite uma reavaliação ou planejamento tático com seu treinador master.
-                   </p>
-                </div>
-                <button className="w-full bg-[#3B82F6] text-white py-5 rounded-2xl font-black italic uppercase tracking-widest text-xs shadow-xl active:scale-95 transition-all hover:bg-blue-400">
-                   Requisitar Horário
-                </button>
-             </div>
- 
-             <div className="bg-[#11161D] border border-white/5 rounded-[3rem] p-12 shadow-2xl">
-                <h3 className="text-2xl font-display font-black italic uppercase tracking-wider mb-10 text-white underline decoration-[#3B82F6] underline-offset-8">Status de Sessões</h3>
-                <div className="space-y-6">
-                   {consultations.length === 0 ? (
-                     <div className="py-16 text-center text-slate-600 font-black uppercase italic text-xs tracking-widest">
-                        Nenhuma sessão pendente.
-                     </div>
-                   ) : (
-                     consultations.map(consult => (
-                       <div key={consult.id} className="bg-black/20 p-6 rounded-3xl border border-white/5 flex items-center justify-between">
-                          <div className="flex items-center gap-6">
-                             <div className="w-14 h-14 bg-[#11161D] border border-white/10 rounded-2xl flex items-center justify-center shadow-sm">
-                                <Clock className="w-6 h-6 text-[#3B82F6]" />
+
+                <div className="bg-slate-900/30 border border-white/10 rounded-[3rem] p-10">
+                   <h3 className="text-xl font-display font-black italic uppercase tracking-wider mb-8">Próximos Compromissos</h3>
+                   <div className="space-y-4">
+                      {consultations.length === 0 ? (
+                        <div className="py-12 text-center text-slate-600 font-black uppercase italic text-[10px] tracking-widest">
+                           Nada agendado para esta semana.
+                        </div>
+                      ) : (
+                        consultations.map(consult => (
+                          <div key={consult.id} className="bg-black/40 p-6 rounded-3xl border border-white/5 flex items-center justify-between">
+                             <div className="flex items-center gap-5">
+                                <div className="w-12 h-12 bg-slate-800 rounded-2xl flex items-center justify-center">
+                                   <Clock className="w-5 h-5 text-yellow-400" />
+                                </div>
                              </div>
                              <div>
-                                <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 italic">{consult.date} • {consult.time}</div>
-                                <h5 className="font-display font-black uppercase italic text-lg tracking-widest text-white leading-none">{consult.type}</h5>
+                                   <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 italic">{consult.date} às {consult.time}</div>
+                                   <h5 className="font-display font-black uppercase italic text-sm tracking-widest">{consult.type}</h5>
+                             </div>
+                             <div className={cn(
+                               "px-4 py-1 rounded-full text-[8px] font-black uppercase italic border",
+                               consult.status === 'scheduled' ? "bg-blue-500/10 text-blue-500 border-blue-500/20" : "bg-green-500/10 text-green-500 border-green-500/20"
+                             )}>
+                                {consult.status}
                              </div>
                           </div>
-                          <div className={cn(
-                            "px-4 py-1.5 rounded-full text-[9px] font-black uppercase italic border shadow-sm",
-                            consult.status === 'scheduled' ? "bg-blue-500/10 text-[#3B82F6] border-blue-500/10" : "bg-emerald-400/10 text-emerald-500 border-emerald-400/10"
-                          )}>
-                             {consult.status === 'scheduled' ? 'Agendado' : consult.status}
-                          </div>
-                       </div>
-                     ))
-                   )}
+                        ))
+                      )}
+                   </div>
                 </div>
              </div>
           </div>
-        )}          {activeTab === 'corridas' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-             {registrations.length === 0 ? (
-                <div className="md:col-span-3 py-32 text-center border border-white/5 rounded-[3rem] bg-[#11161D] shadow-2xl">
-                   <Zap className="w-16 h-16 text-slate-800 mx-auto mb-6" />
-                   <h3 className="text-xl font-display font-black text-slate-700 uppercase italic">Nenhuma inscrição ativa</h3>
-                   <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-2">Explore novos desafios no calendário master.</p>
-                   <Link to="/" className="inline-block mt-10 bg-[#3B82F6] text-white px-8 py-3 rounded-xl font-black uppercase italic tracking-widest text-[10px] hover:scale-105 transition-all shadow-lg shadow-blue-500/20">Ver Eventos</Link>
-                </div>
-             ) : (
-               registrations.map(reg => (
-                 <div key={reg.id} className="bg-[#11161D] border border-white/5 rounded-[3.5rem] overflow-hidden group shadow-2xl flex flex-col">
-                    <div className="p-8 space-y-8 flex-1">
-                       <div className="flex items-center justify-between">
-                          <div className={cn(
-                            "px-4 py-1.5 rounded-full text-[9px] font-black uppercase italic border shadow-sm",
-                            reg.paymentStatus === 'confirmed' ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/10" : "bg-blue-500/10 text-[#3B82F6] border-blue-500/10"
-                          )}>
-                             {reg.paymentStatus === 'confirmed' ? 'Confirmado' : 'Auditando'}
+        )}
+
+        {activeTab === 'corridas' && (
+          <div className="space-y-8">
+             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {registrations.length === 0 ? (
+                   <div className="md:col-span-3 py-32 text-center border-2 border-dashed border-white/5 rounded-[4rem]">
+                      <Zap className="w-16 h-16 text-slate-800 mx-auto mb-6" />
+                      <h3 className="text-xl font-display font-black text-slate-400 uppercase italic">Nenhuma corrida encontrada</h3>
+                      <p className="text-xs text-slate-600 font-bold uppercase tracking-widest mt-2">Escolha seu próximo desafio no catálogo.</p>
+                      <Link to="/" className="inline-block mt-8 text-yellow-400 font-black uppercase italic hover:underline">Ver Eventos Disponíveis</Link>
+                   </div>
+                ) : (
+                  registrations.map(reg => (
+                    <div key={reg.id} className="bg-slate-900/50 border border-white/5 rounded-[3rem] overflow-hidden group">
+                       <div className="p-8 space-y-6">
+                          <div className="flex items-center justify-between">
+                             <div className={cn(
+                               "px-3 py-1 rounded-full text-[8px] font-black uppercase italic border",
+                               reg.paymentStatus === 'confirmed' ? "bg-green-500/10 text-green-500 border-green-500/20" : "bg-yellow-500/10 text-yellow-500 border-yellow-500/20"
+                             )}>
+                                {reg.paymentStatus === 'confirmed' ? 'Confirmado' : 'Pendente'}
+                             </div>
+                             <span className="text-[10px] font-black text-slate-600 uppercase italic">#RM-{reg.id.slice(0, 4)}</span>
                           </div>
-                          <span className="text-[10px] font-black text-slate-600 uppercase italic tracking-widest">#{reg.id.slice(0, 6)}</span>
-                       </div>
- 
-                       <div>
-                          <h3 className="text-3xl font-display font-black uppercase italic tracking-tighter leading-none mb-3 text-white">Corrida</h3>
-                          <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest italic">Protocolo de Registro Ativo</p>
-                       </div>
- 
-                       <div className="space-y-4 pt-8 border-t border-white/5">
-                          <div className="flex items-center gap-4 text-slate-400">
-                             <Trophy className="w-5 h-5 text-blue-500/40" />
-                             <span className="text-[10px] font-black uppercase italic tracking-widest text-slate-400">{reg.runnerName}</span>
+
+                          <div>
+                             <h3 className="text-2xl font-display font-black uppercase italic tracking-tighter leading-tight mb-2">Evento</h3>
+                             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">ID Corrida: {reg.raceId}</p>
                           </div>
-                          <div className="flex items-center gap-4 text-slate-400">
-                             <Activity className="w-5 h-5 text-blue-500/40" />
-                             <span className="text-[10px] font-black uppercase italic tracking-widest text-slate-400">Kit: {reg.jerseySize}</span>
+
+                          <div className="space-y-3 pt-6 border-t border-white/5">
+                             <div className="flex items-center gap-3 text-slate-500">
+                                <Trophy className="w-4 h-4 text-yellow-400/50" />
+                                <span className="text-[10px] font-black uppercase italic tracking-widest">Atleta: {reg.runnerName}</span>
+                             </div>
+                             <div className="flex items-center gap-3 text-slate-500">
+                                <BadgeAlert className="w-4 h-4 text-yellow-400/50" />
+                                <span className="text-[10px] font-black uppercase italic tracking-widest">Camiseta: {reg.jerseySize}</span>
+                             </div>
                           </div>
                        </div>
+                       <Link 
+                         to={`/registration/${reg.id}`}
+                         className="block w-full bg-slate-900 border-t border-white/5 py-5 text-center text-[10px] font-black uppercase tracking-widest group-hover:bg-yellow-400 group-hover:text-slate-950 transition-all"
+                       >
+                          Ver Comprovante
+                       </Link>
                     </div>
-                    <Link 
-                      to={`/registration/${reg.id}`}
-                      className="block w-full bg-black/40 border-t border-white/5 py-6 text-center text-[10px] font-black uppercase tracking-[0.3em] group-hover:bg-[#3B82F6] group-hover:text-white transition-all italic text-slate-400"
-                    >
-                       Acessar Voucher
-                    </Link>
-                 </div>
-               ))
-             )}
+                  ))
+                )}
+             </div>
           </div>
         )}
       </div>

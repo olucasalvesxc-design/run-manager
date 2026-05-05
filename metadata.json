@@ -1,6 +1,6 @@
 {
   "name": "RunManager",
-  "description": "Plataforma profissional de gestão de corridas com design refinado em azul, dashboard responsivo para atletas e organizadores, e gerador de treinos inteligente via IA.",
+  "description": "Plataforma completa para organizadores de corridas criarem eventos e gerenciarem inscrições de forma profissional.",
   "requestFramePermissions": [],
   "majorCapabilities": []
 }

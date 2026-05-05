@@ -1,303 +1,497 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useLocation, Outlet, useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { Link, useNavigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { auth, db } from '../lib/firebase';
+import { doc, getDoc, onSnapshot, query, collection, where, orderBy, updateDoc, writeBatch } from 'firebase/firestore';
 import { 
+  Trophy, 
   LayoutDashboard, 
-  User, 
+  Plus, 
   Settings, 
   LogOut, 
-  Bell, 
-  Search,
+  Zap, 
+  ChevronRight,
   Menu,
   X,
-  Dumbbell,
-  Calendar,
-  Trophy,
-  History,
-  TrendingUp,
-  CreditCard,
-  MessageSquare,
-  ClipboardList,
-  ChevronRight,
+  Bell,
+  Check,
+  Trash2,
   AlertCircle,
-  Clock,
-  Zap
+  Dumbbell,
+  ShieldCheck,
+  Activity as ActivityIcon
 } from 'lucide-react';
-import { cn } from '../lib/utils';
-import { motion, AnimatePresence } from 'motion/react';
-import { collection, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { cn, formatDate, handleFirestoreError, OperationType } from '../lib/utils';
+import { AnimatePresence, motion } from 'motion/react';
 
 const DashboardLayout = () => {
-  const { user, profile, signOut } = useAuth();
-  const location = useLocation();
+  const { user } = useAuth();
   const navigate = useNavigate();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const location = useLocation();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+  const [profile, setProfile] = useState<any | null>(null);
   const [notifications, setNotifications] = useState<any[]>([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notificationFilter, setNotificationFilter] = useState<'all' | 'unread'>('unread');
 
   useEffect(() => {
     if (!user) return;
-    const q = query(
+    const profileRef = doc(db, 'profiles', user.uid);
+    const unsubProfile = onSnapshot(profileRef, (snap) => {
+      if (snap.exists()) {
+        setProfile(snap.data());
+      }
+    });
+
+    const notifQuery = query(
       collection(db, 'notifications'),
       where('userId', '==', user.uid),
-      orderBy('createdAt', 'desc'),
-      limit(5)
+      orderBy('createdAt', 'desc')
     );
-    return onSnapshot(q, (snap) => {
+    const unsubNotifs = onSnapshot(notifQuery, (snap) => {
       setNotifications(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
+
+    return () => {
+      unsubProfile();
+      unsubNotifs();
+    };
   }, [user]);
 
-  const isOrganizer = profile?.role === 'organizer' || profile?.role === 'admin';
-  const isAdmin = profile?.role === 'admin';
+  const unreadCount = notifications.filter(n => !n.read).length;
+  const filteredNotifications = notificationFilter === 'all' 
+    ? notifications 
+    : notifications.filter(n => !n.read);
 
-  const navItems = isOrganizer ? [
-    { label: 'Visão Geral', icon: LayoutDashboard, path: '/dashboard/overview' },
-    { label: 'Corridas', icon: Trophy, path: '/dashboard/races' },
-    { label: 'Consultorias', icon: MessageSquare, path: '/dashboard/trainer' },
-    { label: 'Financeiro', icon: CreditCard, path: '/dashboard/finances' },
-    { label: 'Configurações', icon: Settings, path: '/dashboard/settings' },
-  ] : [
-    { label: 'Início', icon: LayoutDashboard, path: '/dashboard/overview' },
-    { label: 'Meus Treinos', icon: Dumbbell, path: '/dashboard/runner' },
-    { label: 'Minhas Provas', icon: Trophy, path: '/dashboard/races' },
-    { label: 'Meu Perfil', icon: User, path: '/dashboard/settings' },
-  ];
+  const isAdmin = user?.email?.toLowerCase() === 'lukas.alvesr7@gmail.com';
 
-  if (isAdmin) {
-    navItems.splice(4, 0, { label: 'Admin Hub', icon: Zap, path: '/dashboard/admin' });
-  }
+  const markAsRead = async (notifId: string) => {
+    try {
+      await updateDoc(doc(db, 'notifications', notifId), { read: true });
+    } catch (err) {
+      console.error('Error marking notification as read:', err);
+    }
+  };
 
-  const MobileBottomNav = () => (
-    <div className="lg:hidden fixed bottom-6 left-6 right-6 z-[60] bg-[#0B1220]/90 backdrop-blur-2xl border border-white/5 rounded-3xl p-4 flex items-center justify-around shadow-2xl">
-      {navItems.slice(0, 4).map((item) => {
-        const isActive = location.pathname === item.path;
-        return (
-          <Link 
-            key={item.path}
-            to={item.path}
-            className={cn(
-              "flex flex-col items-center gap-1 transition-all duration-300",
-              isActive ? "text-[#3B82F6] scale-110" : "text-slate-500"
-            )}
-          >
-            <item.icon className={cn("w-5 h-5", isActive ? "fill-current" : "")} />
-            <span className="text-[8px] font-black uppercase tracking-widest">{item.label.split(' ')[0]}</span>
-          </Link>
-        );
-      })}
-    </div>
-  );
+  const markAllAsRead = async () => {
+    const unread = notifications.filter(n => !n.read);
+    if (unread.length === 0) return;
+    
+    try {
+      const batch = writeBatch(db);
+      unread.forEach(n => {
+        batch.update(doc(db, 'notifications', n.id), { read: true });
+      });
+      await batch.commit();
+    } catch (err) {
+      console.error('Error marking all as read:', err);
+    }
+  };
 
-  const handleSignOut = async () => {
-    await signOut();
+  const handleLogout = async () => {
+    await auth.signOut();
     navigate('/');
   };
 
-  return (
-    <div className="min-h-screen bg-[#05070A] text-white font-sans flex overflow-hidden">
-      {/* Mobile Backdrop */}
-      <AnimatePresence>
-        {isSidebarOpen && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setIsSidebarOpen(false)}
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-40 lg:hidden"
-          />
-        )}
-      </AnimatePresence>
+  const navItems = [];
+  const userRole = profile?.role || (profile?.organizerName ? 'organizer' : 'athlete');
 
-      {/* Sidebar */}
-      <aside className={cn(
-        "fixed inset-y-0 left-0 z-50 w-72 bg-[#0A0D12] border-r border-white/5 transform transition-transform duration-300 ease-out lg:relative lg:translate-x-0 shadow-2xl flex flex-col",
-        isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+  if (userRole === 'organizer') {
+    navItems.push(
+      { label: 'Painel Geral', icon: <LayoutDashboard className="w-5 h-5" />, path: '/organizer/dashboard' },
+      { label: 'Criar Corrida', icon: <Plus className="w-5 h-5 text-yellow-400" />, path: '/organizer/races/create' },
+      { label: 'Minhas Corridas', icon: <Trophy className="w-5 h-5" />, path: '/organizer/races' },
+      { label: 'Inscritos', icon: <Bell className="w-5 h-5" />, path: '/organizer/registrations' },
+      { label: 'Consultoria e Treinos', icon: <Dumbbell className="w-5 h-5" />, path: '/organizer/training-consulting' },
+      { label: 'Financeiro e Pix', icon: <Trophy className="w-5 h-5" />, path: '/organizer/finance' },
+      { label: 'Meu Plano', icon: <Zap className="w-5 h-5 text-yellow-400" />, path: '/organizer/plans' },
+      { label: 'Configurações', icon: <Settings className="w-5 h-5" />, path: '/organizer/settings' }
+    );
+  } else {
+    navItems.push(
+      { label: 'Meu Painel', icon: <LayoutDashboard className="w-5 h-5" />, path: '/athlete/dashboard' },
+      { label: 'Minhas Corridas', icon: <Trophy className="w-5 h-5" />, path: '/athlete/races' },
+      { label: 'Meus Treinos', icon: <ActivityIcon className="w-5 h-5 text-yellow-400" />, path: '/athlete/trainings' },
+      { label: 'Consultorias', icon: <Dumbbell className="w-5 h-5" />, path: '/athlete/consulting' },
+      { label: 'Perfil', icon: <Settings className="w-5 h-5" />, path: '/athlete/profile' }
+    );
+  }
+
+  if (isAdmin) {
+    navItems.unshift({ label: 'Master Panel', icon: <ShieldCheck className="w-5 h-5 text-yellow-400" />, path: '/admin' });
+  }
+
+  const NavItem = ({ item }: { item: any, key?: React.Key }) => (
+    <Link
+      to={item.path}
+      className={cn(
+        "flex items-center gap-3 px-5 py-3.5 rounded-2xl font-bold transition-all group border border-transparent",
+        location.pathname === item.path 
+          ? "bg-white/5 text-yellow-400 border-white/10 shadow-xl" 
+          : "text-slate-500 hover:text-white hover:bg-white/5"
+      )}
+    >
+      <div className={cn(
+        "p-2 rounded-lg transition-colors",
+        location.pathname === item.path ? "bg-yellow-400/10" : "bg-slate-900 group-hover:bg-slate-800"
       )}>
-        {/* Sidebar Branding */}
-        <div className="p-8 pb-12">
-          <Link to="/" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 bg-[#3B82F6] rounded-xl flex items-center justify-center shadow-[0_0_20px_rgba(59,130,246,0.3)] group-hover:scale-110 transition-transform">
-              <Dumbbell className="w-6 h-6 text-white" />
-            </div>
-            <span className="text-xl font-display font-black italic uppercase tracking-tighter">
-              RUN<span className="text-[#3B82F6]">PRO</span>
-            </span>
-          </Link>
-        </div>
+        {React.cloneElement(item.icon as React.ReactElement, { className: "w-4 h-4" })}
+      </div>
+      <span className="text-sm tracking-tight">{item.label}</span>
+      {location.pathname === item.path && (
+        <motion.div 
+          layoutId="active-pill"
+          className="w-1 h-4 bg-yellow-400 rounded-full ml-auto"
+        />
+      )}
+    </Link>
+  );
 
-        {/* Navigation */}
-        <nav className="flex-1 px-4 space-y-2 overflow-y-auto">
-          {navItems.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              onClick={() => setIsSidebarOpen(false)}
+  const NotificationsPanel = ({ isMobile = false }) => (
+    <motion.div
+      initial={isMobile ? { opacity: 0, y: 10 } : { opacity: 0, scale: 0.9 }}
+      animate={isMobile ? { opacity: 1, y: 0 } : { opacity: 1, scale: 1 }}
+      exit={isMobile ? { opacity: 0, y: 10 } : { opacity: 0, scale: 0.9 }}
+      className={cn(
+        "bg-slate-900 border border-white/10 rounded-[2.5rem] z-[100] overflow-hidden shadow-[0_50px_100px_-20px_rgba(0,0,0,0.8)]",
+        isMobile ? "fixed top-20 right-4 left-4 max-h-[70vh] w-auto" : "fixed left-[296px] top-24 w-80 max-h-[600px] flex flex-col"
+      )}
+    >
+      <div className="p-6 border-b border-white/5 space-y-4 shrink-0 bg-slate-900">
+         <div className="flex items-center justify-between">
+            <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 italic">Notificações</h4>
+            {unreadCount > 0 && (
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  markAllAsRead();
+                }} 
+                className="text-[10px] font-black uppercase text-yellow-400 hover:text-yellow-300 transition-colors"
+              >
+                Marcar Todas
+              </button>
+            )}
+         </div>
+         <div className="flex bg-black/40 p-1.5 rounded-2xl border border-white/5">
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                setNotificationFilter('unread');
+              }}
               className={cn(
-                "flex items-center gap-4 px-6 py-4 rounded-2xl text-[10px] sm:text-xs font-black uppercase tracking-widest italic transition-all group relative overflow-hidden",
-                location.pathname === item.path 
-                  ? "bg-[#3B82F6] text-white shadow-[0_10px_20px_rgba(59,130,246,0.2)]" 
-                  : "text-slate-500 hover:text-white hover:bg-white/5"
+                "flex-1 py-1.5 text-[9px] font-black uppercase tracking-widest rounded-xl transition-all",
+                notificationFilter === 'unread' ? "bg-slate-800 text-white shadow-lg" : "text-slate-500 hover:text-slate-400"
               )}
             >
-              <item.icon className={cn(
-                "w-5 h-5 transition-transform group-hover:scale-110",
-                location.pathname === item.path ? "text-white" : "text-slate-600 group-hover:text-[#3B82F6]"
-              )} />
-              {item.label}
-              {location.pathname === item.path && (
-                <motion.div 
-                  layoutId="activeNav"
-                  className="absolute right-0 top-0 bottom-0 w-1.5 bg-white/20 rounded-l-full"
-                />
+               Não Lidas
+            </button>
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                setNotificationFilter('all');
+              }}
+              className={cn(
+                "flex-1 py-1.5 text-[9px] font-black uppercase tracking-widest rounded-xl transition-all",
+                notificationFilter === 'all' ? "bg-slate-800 text-white shadow-lg" : "text-slate-500 hover:text-slate-400"
               )}
-            </Link>
+            >
+               Todas
+            </button>
+         </div>
+      </div>
+      <div className="overflow-y-auto custom-scrollbar p-3 space-y-1 flex-1">
+         {filteredNotifications.length === 0 ? (
+           <div className="py-16 text-center">
+              <div className="w-12 h-12 bg-slate-800/50 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-white/5">
+                <Bell className="w-6 h-6 text-slate-700" />
+              </div>
+              <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest leading-relaxed">
+                {notificationFilter === 'unread' ? 'Tudo limpo por aqui!' : 'Silêncio total...'}
+              </p>
+           </div>
+         ) : (
+           filteredNotifications.map((n) => (
+             <motion.div 
+               layout
+               initial={{ opacity: 0, y: 10 }}
+               animate={{ opacity: 1, y: 0 }}
+               key={n.id} 
+               onClick={(e) => {
+                 e.stopPropagation();
+                 markAsRead(n.id);
+               }}
+               className={cn(
+                 "p-4 rounded-3xl cursor-pointer transition-all border group relative overflow-hidden",
+                 !n.read ? "bg-white/5 border-white/10" : "bg-transparent border-transparent opacity-50 hover:opacity-100 hover:bg-white/5"
+               )}
+             >
+                {!n.read && <div className="absolute top-0 left-0 w-1 h-full bg-yellow-400" />}
+                <div className="flex items-start gap-4">
+                   <div className="w-9 h-9 rounded-xl bg-slate-800 flex items-center justify-center shrink-0 border border-white/5">
+                      <AlertCircle className="w-4 h-4 text-yellow-400" />
+                   </div>
+                   <div className="flex-1 min-w-0">
+                      <div className="text-[10px] font-black text-white uppercase italic mb-1 truncate">{n.title}</div>
+                      <p className="text-[10px] text-slate-400 font-medium leading-tight line-clamp-2 mb-2">{n.message}</p>
+                      <div className="flex items-center justify-between">
+                        <span className="text-[8px] font-bold text-slate-600 uppercase tracking-tighter">
+                          {n.createdAt?.toDate ? formatDate(n.createdAt.toDate()) : 'Agora'}
+                        </span>
+                        {!n.read && <span className="w-1.5 h-1.5 rounded-full bg-yellow-400" />}
+                      </div>
+                   </div>
+                </div>
+             </motion.div>
+           ))
+         )}
+      </div>
+    </motion.div>
+  );
+
+  return (
+    <div className="min-h-screen bg-slate-950 text-white font-sans grid lg:grid-cols-[280px_1fr] grid-cols-1 overflow-x-hidden">
+      {/* Sidebar - Desktop */}
+      <aside className="hidden lg:flex flex-col border-r border-white/5 bg-slate-950/50 backdrop-blur-xl p-8 sticky top-0 h-screen overflow-y-auto custom-scrollbar">
+        <div className="flex items-center gap-3 mb-10">
+          <motion.div 
+            whileHover={{ rotate: 12, scale: 1.1 }}
+            className="w-10 h-10 bg-yellow-400 rounded-xl flex items-center justify-center shadow-[0_0_20px_rgba(250,204,21,0.2)]"
+          >
+            <Zap className="text-slate-950 w-6 h-6 fill-current" />
+          </motion.div>
+          <span className="text-xl font-display font-black tracking-tight italic uppercase">RunManager</span>
+        </div>
+
+        <nav className="flex-1 space-y-1.5">
+          <div className="text-[10px] font-black text-slate-600 uppercase tracking-[0.2em] mb-4 pl-4 italic">Navegação</div>
+          {navItems.map((item) => (
+            <NavItem key={item.path} item={item} />
           ))}
+          
+          <div className="pt-6">
+            <div className="text-[10px] font-black text-slate-600 uppercase tracking-[0.2em] mb-4 pl-4 italic">Notificações</div>
+            <div className="relative">
+              <button
+                onClick={() => setShowNotifications(!showNotifications)}
+                className={cn(
+                  "w-full flex items-center gap-3 px-5 py-3.5 rounded-2xl font-bold transition-all group border border-transparent",
+                  showNotifications 
+                    ? "bg-white/5 text-white border-white/10" 
+                    : "text-slate-500 hover:text-white hover:bg-white/5"
+                )}
+              >
+                <div className="p-2 rounded-lg bg-slate-900 group-hover:bg-slate-800 relative">
+                  <Bell className="w-4 h-4" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full border-2 border-slate-950 animate-pulse" />
+                  )}
+                </div>
+                <span className="text-sm tracking-tight">Alertas</span>
+                {unreadCount > 0 && (
+                  <span className="ml-auto bg-yellow-400/10 text-yellow-400 text-[10px] px-2 py-0.5 rounded-full font-black">
+                    {unreadCount}
+                  </span>
+                )}
+              </button>
+            </div>
+          </div>
         </nav>
 
-        {/* User Footer */}
-        <div className="p-6 mt-auto border-t border-white/5">
-           <div className="bg-black/40 rounded-3xl p-6 mb-4">
-              <div className="flex items-center gap-4">
-                 <div className="w-10 h-10 rounded-xl bg-[#3B82F6]/10 flex items-center justify-center text-[#3B82F6] font-display font-black italic">
-                    {user?.email?.charAt(0).toUpperCase()}
-                 </div>
-                 <div className="flex-1 min-w-0 text-left">
-                    <p className="text-[10px] font-black uppercase tracking-widest truncate">{profile?.runnerName || profile?.organizerName || user?.email?.split('@')[0]}</p>
-                    <p className="text-[8px] font-bold text-[#3B82F6] uppercase tracking-widest truncate">{profile?.planStatus === 'trial' ? 'FREE TRIAL' : 'PREMIUM ACCESS'}</p>
-                 </div>
-              </div>
-           </div>
-           <button 
-             onClick={handleSignOut}
-             className="w-full flex items-center gap-4 px-6 py-4 text-slate-500 hover:text-[#EF4444] rounded-2xl hover:bg-red-500/5 transition-all text-xs font-black uppercase tracking-widest italic group"
-           >
-             <LogOut className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
-             Desconectar
-           </button>
+        <div className="mt-8 pt-8 border-t border-white/5 space-y-3">
+          <Link 
+            to="/dashboard/profile"
+            className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all group"
+          >
+             <div className="w-10 h-10 rounded-xl bg-slate-800 border border-white/10 flex items-center justify-center text-yellow-400 font-black italic overflow-hidden shrink-0 group-hover:scale-105 transition-transform">
+                {profile?.profileImageUrl ? (
+                  <img src={profile.profileImageUrl} alt="Avatar" className="w-full h-full object-cover" />
+                ) : user?.photoURL ? (
+                  <img src={user.photoURL} alt="Avatar" className="w-full h-full object-cover" />
+                ) : (
+                  profile?.organizerName?.charAt(0) || user?.displayName?.charAt(0) || user?.email?.charAt(0)
+                )}
+             </div>
+             <div className="flex-1 min-w-0">
+                <div className="text-xs font-black truncate text-white italic uppercase tracking-tight">{profile?.organizerName || user?.displayName || 'Organizador'}</div>
+                <div className="text-[9px] text-slate-500 truncate uppercase font-black tracking-widest">{user?.email}</div>
+             </div>
+          </Link>
+          <button 
+            onClick={handleLogout}
+            className="w-full flex items-center justify-center gap-3 px-4 py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] text-yellow-400 bg-yellow-400/5 hover:bg-yellow-400/10 border border-yellow-400/10 transition-all active:scale-95"
+          >
+            <LogOut className="w-4 h-4" />
+            Logout
+          </button>
         </div>
       </aside>
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col h-screen overflow-hidden">
-        {/* Top Navbar */}
-        <header className="h-20 sm:h-24 bg-[#05070A]/80 backdrop-blur-xl border-b border-white/5 flex items-center justify-between px-4 sm:px-10 z-30">
-          <button 
-            onClick={() => setIsSidebarOpen(true)}
-            className="lg:hidden p-2 text-slate-400 hover:text-white transition-colors"
-          >
-            <Menu className="w-6 h-6" />
-          </button>
-
-          <div className="flex-1 hidden md:flex items-center ml-8 lg:ml-0">
-            <div className="relative w-full max-w-md group">
-               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-600 group-focus-within:text-[#3B82F6] transition-colors" />
-               <input 
-                 type="text" 
-                 placeholder="BUSCAR TREINOS, PROVAS OU DICAS..."
-                 className="w-full bg-white/5 border border-white/5 rounded-2xl pl-12 pr-6 py-3 text-[10px] font-black tracking-widest uppercase focus:outline-none focus:border-[#3B82F6]/50 transition-all placeholder:text-slate-700" 
-               />
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3 sm:gap-6 ml-auto">
-            <div className="relative">
-              <button 
-                onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
-                className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors relative group"
-              >
-                <Bell className="w-5 h-5 text-slate-400 group-hover:text-white transition-colors" />
-                {notifications.some(n => !n.read) && (
-                  <span className="absolute top-2 right-2 w-2 h-2 bg-[#3B82F6] rounded-full shadow-[0_0_10px_#3B82F6]" />
+      <div className="flex flex-col min-w-0">
+        {/* Mobile Nav Header */}
+        <header className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-slate-950/80 backdrop-blur-2xl border-b border-white/5 p-4 flex justify-between items-center h-16">
+           <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-yellow-400 rounded-xl flex items-center justify-center transform rotate-12 shadow-[0_0_15px_rgba(250,204,21,0.2)]">
+                <Zap className="text-slate-950 w-5 h-5 fill-current" />
+              </div>
+              <span className="text-lg font-display font-black tracking-tight italic uppercase">RunManager</span>
+           </div>
+           <div className="flex items-center gap-2">
+             <button 
+               onClick={() => setShowNotifications(!showNotifications)}
+               className="relative w-10 h-10 flex items-center justify-center text-slate-400 hover:text-white transition-colors"
+             >
+                <Bell className="w-5 h-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute top-2.5 right-2.5 w-2.5 h-2.5 bg-yellow-400 rounded-full border-2 border-slate-950 shadow-lg" />
                 )}
-              </button>
-
-              <AnimatePresence>
-                {isNotificationsOpen && (
-                  <>
-                    <motion.div 
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      onClick={() => setIsNotificationsOpen(false)}
-                      className="fixed inset-0 z-[60]"
-                    />
-                    <motion.div 
-                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                      className="absolute right-0 mt-4 w-80 sm:w-96 bg-[#11161D] border border-white/10 rounded-[2rem] shadow-[0_30px_60px_rgba(0,0,0,0.5)] z-[70] overflow-hidden"
-                    >
-                      <div className="p-6 border-b border-white/5 flex items-center justify-between">
-                         <h4 className="text-xs font-black uppercase tracking-widest italic">Notificações</h4>
-                         <button className="text-[10px] font-black uppercase text-[#3B82F6] hover:text-[#3B82F6]/80 transition-colors">Marcar Todas</button>
-                      </div>
-                      <div className="max-h-[400px] overflow-y-auto divide-y divide-white/5">
-                        {notifications.length === 0 ? (
-                           <div className="p-12 text-center">
-                              <Bell className="w-8 h-8 text-slate-800 mx-auto mb-4" />
-                              <p className="text-[10px] font-black text-slate-700 uppercase tracking-widest italic">Nada por aqui hoje.</p>
-                           </div>
-                        ) : (
-                          notifications.map(n => (
-                            <div key={n.id} className="p-6 hover:bg-white/5 transition-colors cursor-pointer relative group">
-                               {!n.read && <div className="absolute top-0 left-0 w-1 h-full bg-[#3B82F6] shadow-[0_0_15px_rgba(59,130,246,0.5)]" />}
-                               <div className="flex gap-4">
-                                  <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center shrink-0">
-                                     <AlertCircle className="w-4 h-4 text-[#3B82F6]" />
-                                  </div>
-                                  <div className="space-y-1">
-                                     <p className="text-xs font-bold leading-tight text-white">{n.title || 'Nova Notificação'}</p>
-                                     <p className="text-[10px] font-medium text-slate-500 line-clamp-2">{n.message}</p>
-                                     <div className="flex items-center gap-2 pt-2">
-                                        <Clock className="w-3 h-3 text-slate-700" />
-                                        <span className="text-[8px] font-black text-slate-700 uppercase tracking-tighter italic">2h atrás</span>
-                                        {!n.read && <span className="w-1.5 h-1.5 rounded-full bg-[#3B82F6] shadow-[0_0_8px_rgba(59,130,246,0.6)]" />}
-                                     </div>
-                                  </div>
-                               </div>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                      <Link 
-                        to="/dashboard/notifications" 
-                        className="block w-full p-5 text-center text-[10px] font-black uppercase tracking-[0.2em] italic text-slate-500 hover:text-white bg-white/5 hover:bg-white/10 transition-all"
-                      >
-                         Ver Todo Histórico
-                      </Link>
-                    </motion.div>
-                  </>
-                )}
-              </AnimatePresence>
-            </div>
-
-            <div className="h-10 w-px bg-white/5 hidden sm:block" />
-
-            <div className="flex items-center gap-3">
-               <div className="text-right hidden sm:block">
-                  <p className="text-[10px] font-black uppercase tracking-widest">{user?.email?.split('@')[0]}</p>
-                  <p className="text-[8px] font-bold text-[#3B82F6] uppercase tracking-widest">Nível Elite</p>
-               </div>
-               <Link 
-                to="/dashboard/profile"
-                className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-[#3B82F6] to-blue-700 p-[1px] group"
-              >
-                <div className="w-full h-full rounded-xl bg-[#05070A] flex items-center justify-center overflow-hidden group-hover:scale-95 transition-transform">
-                   <User className="w-5 h-5 text-white/50" />
-                </div>
-              </Link>
-            </div>
-          </div>
+             </button>
+             <button 
+               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} 
+               className="w-10 h-10 flex items-center justify-center bg-white/5 rounded-xl border border-white/10 text-white active:scale-90 transition-all"
+             >
+                {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+             </button>
+           </div>
+           <AnimatePresence>
+             {showNotifications && <NotificationsPanel isMobile />}
+           </AnimatePresence>
         </header>
 
-        {/* Dynamic Page Content */}
-        <main className="flex-1 overflow-y-auto bg-gradient-to-b from-[#05070A] to-[#0A0D12] custom-scrollbar relative">
-          <div className="p-4 sm:p-10 lg:p-14 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-28 lg:pb-14">
-            <Outlet />
-          </div>
-          <MobileBottomNav />
+        {/* Mobile Menu Overlay */}
+        <AnimatePresence>
+          {isMobileMenuOpen && (
+            <>
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-md lg:hidden"
+              />
+              <motion.div 
+                initial={{ x: '100%' }}
+                animate={{ x: 0 }}
+                exit={{ x: '100%' }}
+                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                className="fixed top-0 right-0 bottom-0 z-[70] w-full max-w-[320px] bg-slate-950 border-l border-white/10 p-8 flex flex-col shadow-2xl lg:hidden"
+              >
+                 <div className="flex justify-between items-center mb-10">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-yellow-400 rounded-xl flex items-center justify-center transform rotate-12 shadow-xl">
+                        <Zap className="text-slate-950 w-6 h-6 fill-current" />
+                      </div>
+                      <span className="text-xl font-display font-black tracking-tight italic uppercase">Menu</span>
+                    </div>
+                    <button 
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className="w-10 h-10 flex items-center justify-center text-slate-500 hover:text-white transition-colors"
+                    >
+                      <X className="w-6 h-6" />
+                    </button>
+                 </div>
+
+                 <nav className="flex-1 overflow-y-auto space-y-2 py-4">
+                    {navItems.map((item) => (
+                      <Link
+                        key={item.path}
+                        to={item.path}
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className={cn(
+                          "flex items-center gap-4 px-6 py-4 rounded-[2rem] font-black uppercase text-xs tracking-widest transition-all border",
+                          location.pathname === item.path 
+                            ? "bg-yellow-400 text-slate-950 border-yellow-300 shadow-[0_15px_30px_rgba(250,204,21,0.3)]" 
+                            : "text-slate-500 border-transparent hover:text-white hover:bg-white/5"
+                        )}
+                      >
+                        <div className={cn(
+                          "w-8 h-8 rounded-full flex items-center justify-center",
+                          location.pathname === item.path ? "bg-slate-950/10" : "bg-slate-900"
+                        )}>
+                          {React.cloneElement(item.icon as React.ReactElement, { className: "w-4 h-4" })}
+                        </div>
+                        {item.label}
+                      </Link>
+                    ))}
+                    
+                    {/* Botão de Alertas no Mobile Menu */}
+                    <button
+                      onClick={() => {
+                        setShowNotifications(true);
+                        setIsMobileMenuOpen(false);
+                      }}
+                      className={cn(
+                        "w-full flex items-center gap-4 px-6 py-4 rounded-[2rem] font-black uppercase text-xs tracking-widest transition-all border border-transparent text-slate-500 hover:text-white hover:bg-white/5"
+                      )}
+                    >
+                      <div className="w-8 h-8 bg-slate-900 rounded-full flex items-center justify-center relative">
+                        <Bell className="w-4 h-4" />
+                        {unreadCount > 0 && <span className="absolute top-0 right-0 w-2 h-2 bg-yellow-400 rounded-full" />}
+                      </div>
+                      Alertas
+                      {unreadCount > 0 && <span className="ml-auto bg-yellow-400/20 text-yellow-400 px-2 py-0.5 rounded-full text-[10px]">{unreadCount}</span>}
+                    </button>
+                 </nav>
+
+                 <div className="mt-auto pt-8 border-t border-white/5 space-y-6">
+                    <Link 
+                      to="/dashboard/profile"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className="flex items-center gap-4 p-4 rounded-3xl bg-white/5 border border-white/10"
+                    >
+                       <div className="w-12 h-12 rounded-2xl bg-slate-900 border border-white/10 flex items-center justify-center text-yellow-400 font-black italic overflow-hidden">
+                          {profile?.profileImageUrl ? (
+                            <img src={profile.profileImageUrl} alt="Avatar" className="w-full h-full object-cover" />
+                          ) : user?.photoURL ? (
+                            <img src={user.photoURL} alt="Avatar" className="w-full h-full object-cover" />
+                          ) : (
+                            profile?.organizerName?.charAt(0) || user?.displayName?.charAt(0) || user?.email?.charAt(0)
+                          )}
+                       </div>
+                       <div className="flex-1 min-w-0">
+                          <div className="text-sm font-black truncate text-white uppercase italic tracking-tight">
+                            {profile?.organizerName || user?.displayName || 'Organizador'}
+                          </div>
+                          <div className="text-[9px] text-slate-500 truncate uppercase font-black tracking-widest">{user?.email}</div>
+                       </div>
+                    </Link>
+
+                    <button 
+                      onClick={() => {
+                        setIsMobileMenuOpen(false);
+                        handleLogout();
+                      }}
+                      className="w-full flex items-center justify-center gap-3 px-6 py-5 rounded-[2.5rem] font-black text-[10px] uppercase tracking-[0.3em] text-yellow-400 border border-yellow-400/20 bg-yellow-400/5 hover:bg-yellow-400/10 transition-all active:scale-95"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      Encerrar Sessão
+                    </button>
+                 </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
+
+        {/* Global Notifications Overlay */}
+        <AnimatePresence>
+          {showNotifications && (
+            <>
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setShowNotifications(false)}
+                className="fixed inset-0 z-[95] bg-black/40 backdrop-blur-[2px]"
+              />
+              <NotificationsPanel isMobile={window.innerWidth < 1024} />
+            </>
+          )}
+        </AnimatePresence>
+
+        {/* Main Content Area */}
+        <main className="flex-1 w-full max-w-[1440px] mx-auto min-h-screen pt-16 lg:pt-0">
+           <div className="p-2 sm:p-4 md:p-8 lg:p-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
+              <Outlet />
+           </div>
         </main>
       </div>
     </div>
