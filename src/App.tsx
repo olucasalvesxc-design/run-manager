@@ -26,6 +26,13 @@ const CreateWorkout = lazy(() => import('./pages/CreateWorkout'));
 const StudentProfile = lazy(() => import('./pages/StudentProfile'));
 const SignupSelection = lazy(() => import('./pages/SignupSelection'));
 const DashboardLayout = lazy(() => import('./components/DashboardLayout'));
+const NexusOnboarding       = lazy(() => import('./pages/NexusOnboarding'));
+const NexusTrainerDashboard = lazy(() => import('./pages/NexusTrainerDashboard'));
+const NexusWorkoutSession   = lazy(() => import('./pages/NexusWorkoutSession'));
+const NexusExerciseLibrary  = lazy(() => import('./pages/NexusExerciseLibrary'));
+const NexusProgress         = lazy(() => import('./pages/NexusProgress'));
+const NexusAchievements     = lazy(() => import('./pages/NexusAchievements'));
+const NexusPlanView         = lazy(() => import('./pages/NexusPlanView'));
 
 const LoadingScreen = () => (
   <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-center p-6">
@@ -100,7 +107,21 @@ export default function App() {
                 <Route path="trainings" element={<RunnerDashboard />} />
                 <Route path="consulting" element={<RunnerDashboard />} />
                 <Route path="profile" element={<ProfileSettings />} />
+                {/* NEXUS TRAINER AI */}
+                <Route path="nexus-trainer" element={<NexusTrainerDashboard />} />
+                <Route path="nexus-trainer/plan" element={<NexusPlanView />} />
+                <Route path="nexus-trainer/exercises" element={<NexusExerciseLibrary />} />
+                <Route path="nexus-trainer/progress" element={<NexusProgress />} />
+                <Route path="nexus-trainer/achievements" element={<NexusAchievements />} />
+                <Route path="nexus-trainer/workout/:dayIndex" element={<NexusWorkoutSession />} />
               </Route>
+
+              {/* NEXUS Onboarding (full screen, outside layout) */}
+              <Route path="/athlete/nexus-trainer/onboarding" element={
+                <ProtectedRoute role="athlete">
+                  <NexusOnboarding />
+                </ProtectedRoute>
+              } />
 
               {/* Organizer Dashboard Branch */}
               <Route path="/organizer" element={

@@ -3,13 +3,13 @@ import { Link, useNavigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { auth, db } from '../lib/firebase';
 import { doc, getDoc, onSnapshot, query, collection, where, orderBy, updateDoc, writeBatch } from 'firebase/firestore';
-import { 
-  Trophy, 
-  LayoutDashboard, 
-  Plus, 
-  Settings, 
-  LogOut, 
-  Zap, 
+import {
+  Trophy,
+  LayoutDashboard,
+  Plus,
+  Settings,
+  LogOut,
+  Zap,
   ChevronRight,
   Menu,
   X,
@@ -19,7 +19,8 @@ import {
   AlertCircle,
   Dumbbell,
   ShieldCheck,
-  Activity as ActivityIcon
+  Activity as ActivityIcon,
+  Cpu
 } from 'lucide-react';
 import { cn, formatDate, handleFirestoreError, OperationType } from '../lib/utils';
 import { AnimatePresence, motion } from 'motion/react';
@@ -110,11 +111,12 @@ const DashboardLayout = () => {
     );
   } else {
     navItems.push(
-      { label: 'Meu Painel', icon: <LayoutDashboard className="w-5 h-5" />, path: '/athlete/dashboard' },
+      { label: 'Meu Painel',      icon: <LayoutDashboard className="w-5 h-5" />, path: '/athlete/dashboard' },
+      { label: 'NEXUS Trainer',   icon: <Cpu className="w-5 h-5 text-blue-400" />, path: '/athlete/nexus-trainer' },
       { label: 'Minhas Corridas', icon: <Trophy className="w-5 h-5" />, path: '/athlete/races' },
-      { label: 'Meus Treinos', icon: <ActivityIcon className="w-5 h-5 text-yellow-400" />, path: '/athlete/trainings' },
-      { label: 'Consultorias', icon: <Dumbbell className="w-5 h-5" />, path: '/athlete/consulting' },
-      { label: 'Perfil', icon: <Settings className="w-5 h-5" />, path: '/athlete/profile' }
+      { label: 'Meus Treinos',    icon: <ActivityIcon className="w-5 h-5 text-yellow-400" />, path: '/athlete/trainings' },
+      { label: 'Consultorias',    icon: <Dumbbell className="w-5 h-5" />, path: '/athlete/consulting' },
+      { label: 'Perfil',          icon: <Settings className="w-5 h-5" />, path: '/athlete/profile' }
     );
   }
 
@@ -122,32 +124,45 @@ const DashboardLayout = () => {
     navItems.unshift({ label: 'Master Panel', icon: <ShieldCheck className="w-5 h-5 text-yellow-400" />, path: '/admin' });
   }
 
-  const NavItem = ({ item }: { item: any, key?: React.Key }) => (
-    <Link
-      to={item.path}
-      onClick={() => console.log('[Nav] click →', item.path)}
-      className={cn(
-        "flex items-center gap-3 px-5 py-3.5 rounded-2xl font-bold transition-all group border border-transparent",
-        location.pathname === item.path 
-          ? "bg-white/5 text-yellow-400 border-white/10 shadow-xl" 
-          : "text-slate-500 hover:text-white hover:bg-white/5"
-      )}
-    >
-      <div className={cn(
-        "p-2 rounded-lg transition-colors",
-        location.pathname === item.path ? "bg-yellow-400/10" : "bg-slate-900 group-hover:bg-slate-800"
-      )}>
-        {React.cloneElement(item.icon as React.ReactElement, { className: "w-4 h-4" })}
-      </div>
-      <span className="text-sm tracking-tight">{item.label}</span>
-      {location.pathname === item.path && (
-        <motion.div 
-          layoutId="active-pill"
-          className="w-1 h-4 bg-yellow-400 rounded-full ml-auto"
-        />
-      )}
-    </Link>
-  );
+  const isNavActive = (path: string) => {
+    if (path === '/athlete/nexus-trainer') return location.pathname.startsWith('/athlete/nexus-trainer');
+    return location.pathname === path;
+  };
+
+  const NavItem = ({ item }: { item: any, key?: React.Key }) => {
+    const active = isNavActive(item.path);
+    const isNexus = item.path === '/athlete/nexus-trainer';
+    return (
+      <Link
+        to={item.path}
+        onClick={() => console.log('[Nav] click →', item.path)}
+        className={cn(
+          "flex items-center gap-3 px-5 py-3.5 rounded-2xl font-bold transition-all group border border-transparent",
+          active
+            ? isNexus
+              ? "bg-blue-500/10 text-blue-400 border-blue-500/20 shadow-xl"
+              : "bg-white/5 text-yellow-400 border-white/10 shadow-xl"
+            : "text-slate-500 hover:text-white hover:bg-white/5"
+        )}
+      >
+        <div className={cn(
+          "p-2 rounded-lg transition-colors",
+          active
+            ? isNexus ? "bg-blue-500/10" : "bg-yellow-400/10"
+            : "bg-slate-900 group-hover:bg-slate-800"
+        )}>
+          {React.cloneElement(item.icon as React.ReactElement, { className: "w-4 h-4" })}
+        </div>
+        <span className="text-sm tracking-tight">{item.label}</span>
+        {active && (
+          <motion.div
+            layoutId="active-pill"
+            className={cn("w-1 h-4 rounded-full ml-auto", isNexus ? "bg-blue-400" : "bg-yellow-400")}
+          />
+        )}
+      </Link>
+    );
+  };
 
   const NotificationsPanel = ({ isMobile = false }) => (
     <motion.div
