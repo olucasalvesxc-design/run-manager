@@ -203,11 +203,42 @@ service cloud.firestore {
       }
 
       allow read: if isSignedIn() && (
-        isOwner(resource.data.trainerId) || 
+        isOwner(resource.data.trainerId) ||
         get(/databases/$(database)/documents/trainer_clients/$(resource.data.clientId)).data.email == request.auth.token.email
       );
       allow create: if isSignedIn() && isOwner(incoming().trainerId);
       allow update: if isSignedIn() && isOwner(resource.data.trainerId);
+    }
+
+    // ─── NEXUS TRAINER AI ───────────────────────────────────────────────
+
+    // Perfil de onboarding do atleta
+    match /nexus_profiles/{userId} {
+      allow read, write: if isSignedIn() && isOwner(userId);
+    }
+
+    // Plano de treino gerado pela IA
+    match /nexus_plans/{userId} {
+      allow read, write: if isSignedIn() && isOwner(userId);
+    }
+
+    // Logs de sessões de treino concluídas
+    match /nexus_workout_logs/{logId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && incoming().userId == request.auth.uid;
+      allow update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    // Medidas corporais
+    match /nexus_measurements/{measurementId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && incoming().userId == request.auth.uid;
+      allow update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    // Conquistas, XP e sequência
+    match /nexus_achievements/{userId} {
+      allow read, write: if isSignedIn() && isOwner(userId);
     }
   }
 }
